@@ -6,7 +6,7 @@ import com.deepexi.tarimkv.*;
  *
  */
 public class TarimDB {
-    public TarimDB(TarimKV kv, TarimKVMeta meta) {
+    public TarimDB(TarimKV kv, TarimKVMetaClient metaClient) {
     }
     public int run() {
         System.out.println( "This is TarimDB!" );

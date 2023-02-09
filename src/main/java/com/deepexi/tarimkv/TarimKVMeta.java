@@ -9,5 +9,9 @@ public class TarimKVMeta extends AbstractKVMeta {
     public int init() {
         return 0;
     }
+
+    public int run() {
+        return 0;
+    }
 }
 
