@@ -1,23 +1,24 @@
 package com.deepexi;
 
-import com.deepexi.tarimdb.TarimDB;
-import com.deepexi.tarimkv.TarimKV;
+import com.deepexi.tarimdb.*;
+import com.deepexi.tarimkv.*;
 /**
  * TarimServer
  *
  */
 public class TarimServer
 {
-    public static void main( String[] args )
-    {
+    public static void main( String[] args ) {
+
         System.out.println( "TarimServer: Hello World!" );
 
-        TarimDB db = new TarimDB();
-        db.info();
-
         TarimKV kv = new TarimKV();
-        kv.info();
-        kv.rocksdbSample();
+        TarimKVMeta kvMeta = new TarimKVMeta();
+        TarimDB db = new TarimDB(kv, kvMeta);
     }
 
+    public static void testRocksdb() {
+        TestRocksDB test = new TestRocksDB();
+        test.rocksdbSample();
+    }
 }
