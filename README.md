@@ -3,6 +3,10 @@
 simple try:
 ```
 mvn compile
-java -cp target/classes/:/home/deepliu/lib/rocksdbjni-7.6.0-linux64.jar com.deepexi.TarimServer
+
+// run meta node
+mvn exec:java -Dexec.mainClass="com.deepexi.TarimServer" -Dexec.args='-m dnode -f meta.yaml'
+// run data node
+mvn exec:java -Dexec.mainClass="com.deepexi.TarimServer" -Dexec.args='-m dnode -f meta.yaml'
 ```
 
