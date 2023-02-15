@@ -1,0 +1,82 @@
+id: mn-1
+metaMode: standalone
+address: 0.0.0.0
+port: 1301
+role: master
+mnodes:
+  - id: mn-1
+    host: 0.0.0.0
+    port: 1301
+    role: master
+    status: 1
+dnodes:
+  - id: dn-1
+    host: 127.0.0.1
+    port: 1302
+    slots:
+      - id: sl-1-1
+        dataPath: /data/tarim-data/tarimkv-data-test/h1/slot1
+        role: 1
+        status: 2
+      - id: sl-1-2
+        dataPath: /data/tarim-data/tarimkv-data-test/h1/slot2
+        role: 1
+        status: 2
+    status: 1
+  - id: dn-2
+    host: 127.0.0.1
+    port: 1303
+    slots:
+      - id: sl-2-1
+        dataPath: /data/tarim-data/tarimkv-data-test/h2/slot1
+        role: 1
+        status: 2
+      - id: sl-2-2
+        dataPath: /data/tarim-data/tarimkv-data-test/h2/slot2
+        role: 1
+        status: 2
+    status: 1
+  - id: dn-3
+    host: 127.0.0.1
+    port: 1303
+    slots:
+      - id: sl-3-1
+        dataPath: /data/tarim-data/tarimkv-data-test/h3/slot1
+        role: 1
+        status: 2
+      - id: sl-3-2
+        dataPath: /data/tarim-data/tarimkv-data-test/h3/slot2
+        role: 1
+        status: 2
+    status: 1
+rgroups:
+  - id: rg-1
+    hashValue: 0x2bffffff
+    slots:
+      - id: sl-1-1
+        role: 1
+  - id: rg-2
+    hashValue: 0x56ffffff
+    slots:
+      - id: sl-1-2
+        role: 1
+  - id: rg-3
+    hashValue: 0x81ffffff
+    slots:
+      - id: sl-2-1
+        role: 1
+  - id: rg-4
+    hashValue: 0xacffffff
+    slots:
+      - id: sl-2-2
+        role: 1
+  - id: rg-5
+    hashValue: 0xd7ffffff
+    slots:
+      - id: sl-3-1
+        role: 1
+  - id: rg-6
+    hashValue: 0xffffffff
+    slots:
+      - id: sl-3-2
+        role: 1

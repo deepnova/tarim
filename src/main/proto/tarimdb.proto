@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+option java_multiple_files = false;//以非外部类模式生成
+option java_package = "com.deepexi.rpc";//所在包名
+option java_outer_classname = "TarimDBSvc";//最外层类名称
+
+service Tarim {
+}
+

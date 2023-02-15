@@ -7,7 +7,6 @@ package com.deepexi.tarimkv;
  */
 public class TarimKV extends AbstractKV {
     public int init() {
-        // no-op
         return 0;
     }
 }
