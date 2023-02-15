@@ -4,23 +4,17 @@ import org.apache.commons.cli.*;
 
 import com.deepexi.tarimdb.*;
 import com.deepexi.tarimkv.*;
+import com.deepexi.util.TLog;
+import com.deepexi.util.BasicConfig;
+import com.deepexi.util.Status;
 /**
  * TarimServer
  *
  */
-public class TarimServer
-{
-    public static class BasicConfig { // 怎么不使用 static
-        public String mode; // data, meta
-        public String configFile; 
-        public BasicConfig(){
-            mode = "data";
-            configFile = "";
-        }
-    }
+public class TarimServer {
 
     public static int parseArgs(String[] args, BasicConfig conf) {
-        Option opt1 = new Option("m", "mode", true, "node mode('data' or 'meta').");
+        Option opt1 = new Option("m", "mode", true, "node mode('dnode' or 'mnode').");
         opt1.setRequired(true);
         Option opt2 = new Option("f", "conf", true, "config filename with path.");
         opt2.setRequired(true);
@@ -42,7 +36,7 @@ public class TarimServer
         }
         
         if(cli.hasOption("m")){
-            conf.mode = cli.getOptionValue("m","data");
+            conf.mode = cli.getOptionValue("m","dnode");
         }
         if(cli.hasOption("f")){
             conf.configFile = cli.getOptionValue("f","");
@@ -52,31 +46,36 @@ public class TarimServer
 
     public static void main( String[] args ) {
 
-        System.out.println( "TarimServer: Hello World!" );
+        TLog.debug( "TarimServer: Hello Tarim!" );
 
         BasicConfig bconf = new BasicConfig();
         int ret = parseArgs(args, bconf);
-        System.out.println("[args] mode: " + bconf.mode + ", conf: " + bconf.configFile);
+        TLog.info("[args] mode: " + bconf.mode + ", conf: " + bconf.configFile);
 
-        DataNode(bconf.configFile); // or MetaNode(bconf.configFile);
-    }
+        //AbstractNode node;
+        try{
+            if(bconf.mode.equals(BasicConfig.DATANODE)){
+                DataNode node = new DataNode(bconf);
+                node.init();
+                node.start();
+                TLog.debug( "DataNode end!" );
+            }else if(bconf.mode.equals(BasicConfig.METANODE)){
+                MetaNode node = new MetaNode(bconf);
+                node.init();
+                node.start();
+                node.blockUntilShutdown();
+            }else{
+                TLog.error("[args] unknown mode: " + bconf.mode);
+            }
+        } catch(InterruptedException e){
+            TLog.error("InterruptedException error");
+        }
 
-    public static int DataNode(String configFile) {
+        TLog.debug( "TarimServer stopped!" );
 
-        TarimKV kv = new TarimKV();
-        TarimKVMetaClient kvMetaClient = new TarimKVMetaClient();
-        TarimDB db = new TarimDB(kv, kvMetaClient);
-        kv.init();
-        db.run();
-        return 0;
-    }
-
-    public static int MetaNode(String configFile) {
-
-        TarimKVMeta kvMeta = new TarimKVMeta();
-        kvMeta.init();
-        kvMeta.run();
-        return 0;
+        // 为什么这里会编译报错
+        //node.init();
+        //node.run();
     }
 
     public static void testRocksdb() {
