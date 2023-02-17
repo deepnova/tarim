@@ -1,15 +1,27 @@
-package com.deepexi.tarimdb;
+package com.deepexi.datamodels;
 
+import com.deepexi.util.TLog;
+import com.deepexi.util.Status;
 import com.deepexi.tarimkv.*;
 /**
  * TarimDB
  *
  */
-public class TarimDB {
-    public TarimDB(TarimKV kv, TarimKVMetaClient metaClient) {
+public class TarimDB extends AbstractDataModel {
+
+    public TarimDB() {
     }
-    public int run() {
-        System.out.println( "This is TarimDB!" );
-        return 0;
+
+    @Override
+    public Status init(TarimKV kv) {
+        super.init(kv);
+        TLog.info( "This is TarimDB!" );
+        return Status.OK;
+    }
+
+    @Override
+    public void run() {
+        //TODO
+        TLog.info( "Do some work in TarimDB!" );
     }
 }

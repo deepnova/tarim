@@ -2,7 +2,6 @@ package com.deepexi;
 
 import org.apache.commons.cli.*;
 
-import com.deepexi.tarimdb.*;
 import com.deepexi.tarimkv.*;
 import com.deepexi.util.TLog;
 import com.deepexi.util.BasicConfig;

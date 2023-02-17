@@ -22,7 +22,7 @@ public class MetaNode extends AbstractNode {
 
     private int port = 1301;
     private Server server;
-    private KVMetadata metaConf;
+    private KVMetadata metadata;
 
     public MetaNode(BasicConfig conf){
         super(conf);
@@ -31,8 +31,8 @@ public class MetaNode extends AbstractNode {
     @Override
     public Status init(){ 
         TLog.info("metanode init");
-        metaConf = new KVMetadata();
-        YamlLoader.load(conf_.configFile, metaConf);
+        metadata = new KVMetadata();
+        YamlLoader.loadMetaConfig(conf_.configFile, metadata);
         return Status.OK;
     }
 
@@ -40,7 +40,7 @@ public class MetaNode extends AbstractNode {
     public Status start() {
 
         try{
-            server = ServerBuilder.forPort(port).addService(new TarimKVMeta(metaConf))
+            server = ServerBuilder.forPort(port).addService(new TarimKVMeta(metadata))
                 .build().start();
             TLog.info("service start...");
 

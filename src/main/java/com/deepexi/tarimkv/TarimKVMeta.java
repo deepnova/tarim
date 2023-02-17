@@ -18,12 +18,12 @@ import com.deepexi.util.Status;
  */
 public class TarimKVMeta extends TarimKVGrpc.TarimKVImplBase {
 
-    private KVMetadata metaConf; // context
+    private KVMetadata metadata; // context
 
-    public TarimKVMeta(KVMetadata metaConf) {
+    public TarimKVMeta(KVMetadata metadata) {
         super();
-        this.metaConf = metaConf;
-        TLog.debug("TarimKVMeta constructor, metaConf: " + metaConf.toString());
+        this.metadata = metadata;
+        TLog.debug("TarimKVMeta constructor, metadata: " + metadata.toString());
     }
 
     public static<T> Iterable<T> iteratorToIterable(Iterator<T> iterator)
@@ -55,11 +55,11 @@ public class TarimKVMeta extends TarimKVGrpc.TarimKVImplBase {
     public void getDataDistribution(DataDistributionRequest request,
                                     StreamObserver<DataDistributionResponse> responseObserver) {
 
-        TLog.debug("client request comes, metaConf: " + metaConf.toString());
+        TLog.debug("client request comes, metadata: " + metadata.toString());
         DataDistributionResponse.Builder respBuilder = DataDistributionResponse.newBuilder();
         DistributionInfo.Builder distBuilder = DistributionInfo.newBuilder();
-        distBuilder.addAllRgroups(iteratorToIterable(metaConf.rgroups.iterator()));
-        distBuilder.addAllDnodes(iteratorToIterable(metaConf.dnodes.iterator()));
+        distBuilder.addAllRgroups(iteratorToIterable(metadata.rgroups.iterator()));
+        distBuilder.addAllDnodes(iteratorToIterable(metadata.dnodes.iterator()));
 
         respBuilder.setCode(0);
         respBuilder.setMsg("OK");

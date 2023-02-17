@@ -4,22 +4,6 @@ option java_multiple_files = false;//以非外部类模式生成
 option java_package = "com.deepexi.rpc";//所在包名
 option java_outer_classname = "TarimKVMetaSvc";//最外层类名称
 
-// demo
-message UnaryRequest{
-	string serviceName = 1;
-	string methodName = 2;
-	bytes data = 3;
-	string request_id = 4;//参数默认都为可选，如果没有赋值，那么接口中不会出现该参数，不会默认为null之类的
-}
-message UnaryResponse{
-	string serviceName = 1;
-	string methodName = 2;
-	bytes data = 3;
-	string request_id = 4;
-}
-
-//-----------------------
-
 enum NodeStatus {
     NS_INIT     = 0;
     NS_RUNNING  = 1;
@@ -78,8 +62,5 @@ message DataDistributionResponse {
 }
 
 service TarimKV {
-    // demo
-	rpc SendUnaryRequest(UnaryRequest) returns(UnaryResponse);
-
     rpc GetDataDistribution(DataDistributionRequest) returns (DataDistributionResponse);
 }

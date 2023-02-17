@@ -32,20 +32,6 @@ public class TarimKVMetaClient {
         channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
     }
 
-    //客户端方法
-    public void sayHello(String str){
-        //封装请求参数
-        TarimKVMetaSvc.UnaryRequest request = TarimKVMetaSvc.UnaryRequest.newBuilder()
-                                                          .setServiceName("GrpcServiceRequest")
-                                                          .setMethodName("sendUnaryRequest")
-                                                          .setData(ByteString.copyFrom(str.getBytes()))
-                                                          .build();
-        //客户端存根节点调用grpc服务接口，传递请求参数
-        TarimKVMetaSvc.UnaryResponse response = blockStub.sendUnaryRequest(request);
-
-        TLog.debug("client, serviceName:"+response.getServiceName()+"; methodName:"+response.getMethodName());
-    }
-
     public DistributionInfo getDistribution(){
 
         DataDistributionRequest request = DataDistributionRequest.newBuilder().setTableID(1).build();

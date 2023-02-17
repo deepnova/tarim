@@ -11,19 +11,19 @@ public class TLog {
     public final static Logger logger = LogManager.getLogger(TLog.class);
 
     public static void debug(String message){
-        logger.debug("[Tarim] " + message);
+        //logger.debug("[Tarim] " + message);
     }
 
     public static void info(String message){
-        logger.info("[Tarim] " + message);
+        //logger.info("[Tarim] " + message);
     }
 
     public static void warn(String message){
-        logger.warn("[Tarim] " + message);
+        //logger.warn("[Tarim] " + message);
     }
 
     public static void error(String message){
-        logger.error("[Tarim] " + message);
+        //logger.error("[Tarim] " + message);
     }
 }
 

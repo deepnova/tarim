@@ -15,6 +15,21 @@
     <maven.compiler.compilerVersion>11</maven.compiler.compilerVersion>
   </properties>
 
+    <!--<repositories>
+		<repository>
+			<id>nexus</id>
+			<name>Nexus Repository</name>
+			<url>http://nexus.deepexi.com/repository/tarim-release/</url>
+		</repository>
+	</repositories>
+	<pluginRepositories>
+		<pluginRepository>
+			<id>nexus</id>
+			<name>Nexus Plugin Repository</name>
+			<url>http://nexus.deepexi.com/repository/maven-public/</url>
+		</pluginRepository>
+	</pluginRepositories>-->
+
     <build>
       <extensions>
         <extension>
@@ -43,6 +58,17 @@
           </executions>
         </plugin>
       </plugins>
+
+      <!--<resources>
+         <resource>
+             <directory>${env.HOME}/lib</directory>
+             <targetPath>${project.build.outputDirectory}/BOOT-INF/lib/</targetPath>
+             <includes>
+                 <include>**/*.jar</include>
+             </includes>
+         </resource>
+      </resources>-->
+             
     </build>
 
   <dependencies>
@@ -57,9 +83,9 @@
     <dependency>
         <groupId>org.rocksdb</groupId>
         <artifactId>rocksdbjni</artifactId>
-        <version>7.6.0</version>
-        <scope>system</scope>
-        <systemPath>/home/deepliu/lib/rocksdbjni-7.6.0-linux64.jar</systemPath>
+        <version>7.9.2-1</version>
+        <!--<scope>system</scope>
+        <systemPath>${env.HOME}/lib/rocksdbjni-7.6.0-linux64.jar</systemPath>-->
     </dependency>
 
     <!-- https://mvnrepository.com/artifact/commons-cli/commons-cli -->
