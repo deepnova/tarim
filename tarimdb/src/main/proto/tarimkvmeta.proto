@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+option java_multiple_files = false;//以非外部类模式生成
+option java_package = "com.deepexi.rpc";//所在包名
+option java_outer_classname = "TarimKVMetaSvc";//最外层类名称
+
+enum NodeStatus {
+    NS_INIT     = 0;
+    NS_RUNNING  = 1;
+    NS_OFFLINE  = 2;
+    NS_FAILURE  = 3;
+}
+
+enum SlotStatus {
+    SS_IDLE         = 0;
+    SS_ALLOCATED    = 1;
+    SS_USING        = 2;
+    SS_OFFLINE      = 3;
+    SS_FAILURE      = 4;
+}
+
+enum SlotRole {
+    SR_NONE         = 0;
+    SR_MASTER       = 1;
+    SR_SECONDARY    = 2;
+}
+
+message Slot {
+    string id = 1;
+    string dataPath = 2;
+    SlotRole role = 3;
+    SlotStatus status = 4;
+}
+
+message Node {
+    string id = 1;
+    string host = 2;
+    int32 port = 3;
+    repeated Slot slots = 4;
+    NodeStatus status = 5;
+}
+
+message RGroupItem {
+    string id = 1;
+    int64 hashValue = 2;
+    repeated Slot slots = 3;
+}
+
+message DistributionInfo {
+    repeated RGroupItem rgroups = 1;
+    repeated Node dnodes = 2;
+}
+
+message DataDistributionRequest {
+    int32 tableID = 1;
+}
+
+message DataDistributionResponse {
+    int32 code = 1;
+    string msg = 2;
+    DistributionInfo distribution = 3;
+}
+
+service TarimKV {
+    rpc GetDataDistribution(DataDistributionRequest) returns (DataDistributionResponse);
+}

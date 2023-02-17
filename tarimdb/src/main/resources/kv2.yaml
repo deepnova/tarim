@@ -1,0 +1,18 @@
+id: dn-2
+address: 0.0.0.0
+port: 1302
+mnodes:
+  - id: mn-1
+    host: 127.0.0.1
+    port: 1301
+    role: master
+    status: 1
+slots:
+  - id: sl-2-1
+    dataPath: /data/tarim-data/tarimkv-data-test/h2/slot1
+    role: 1
+    status: 2
+  - id: sl-2-2
+    dataPath: /data/tarim-data/tarimkv-data-test/h2/slot2
+    role: 1
+    status: 2
