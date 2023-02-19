@@ -1,5 +1,7 @@
 package com.deepexi.tarimdb.tarimkv;
 
+import java.util.List;
+
 public class KVSchema {
 
     static class KVTable {
@@ -32,7 +34,7 @@ public class KVSchema {
     static class PrepareScanInfo {
         public int snapshotID;
         public List<ChunkDetail> chunkDetails;
-        public MainAccount;
+        public MainAccount mainAccount;
     }
 
     static class ChunkDetail {
@@ -52,7 +54,7 @@ public class KVSchema {
         public String token;
     }
 
-    static calss DeltaScanParam {
+    static class DeltaScanParam {
         // 1：delta-only
         // 2: full
         public int scope; 
@@ -63,7 +65,7 @@ public class KVSchema {
         public int scanSize;
     }
 
-    static calss PrefixScanParam {
+    static class PrefixScanParam {
         public String tableID;
         public int snapshotID;
         public long chunkID;
