@@ -70,4 +70,17 @@ public class KVLocalMetadata {
         sb.append("}");
         return sb.toString();
     }
+
+    static class Node {
+        public String host;
+        public int port;
+        public Node(String host, int port) {
+            this.host = host;
+            this.port = port;
+        }
+        public Node(Node node) {
+            this.host = node.host;
+            this.port = node.port;
+        }
+    }
 }

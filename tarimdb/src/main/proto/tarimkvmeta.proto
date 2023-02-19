@@ -52,7 +52,7 @@ message DistributionInfo {
 }
 
 message DataDistributionRequest {
-    int32 tableID = 1;
+    int32 tableID = 1; // 可以不需要
 }
 
 message DataDistributionResponse {

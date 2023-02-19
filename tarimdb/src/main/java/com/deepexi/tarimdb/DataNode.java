@@ -7,7 +7,7 @@ import org.apache.logging.log4j.Logger;
 
 import com.deepexi.tarimdb.util.BasicConfig;
 import com.deepexi.tarimdb.util.Status;
-import com.deepexi.tarimdb.tarimkv.TarimKVMetaClient;
+//import com.deepexi.tarimdb.tarimkv.TarimKVMetaClient;
 import com.deepexi.tarimdb.tarimkv.TarimKV;
 import com.deepexi.tarimdb.tarimkv.KVLocalMetadata;
 import com.deepexi.tarimdb.tarimkv.YamlLoader;

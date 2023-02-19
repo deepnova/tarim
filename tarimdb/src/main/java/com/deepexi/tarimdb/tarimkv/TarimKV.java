@@ -25,7 +25,6 @@ public class TarimKV extends AbstractKV {
 
     private KVLocalMetadata lMetadata;
     private TarimKVMetaClient metaClient;
-    private DistributionInfo dataDist;
 
     // An instance per slot, a slot per disk(directory)
     private Map<String, RocksDB> dbInstances;
@@ -77,7 +76,7 @@ public class TarimKV extends AbstractKV {
             logger.info("get kv metadata from host: " + node.getHost() + ", port: " + node.getPort());
             metaClient = new TarimKVMetaClient(node.getHost(), node.getPort());
         }
-        dataDist = metaClient.getDistribution();
+        metaClient.getDistribution();
     }
 }
 

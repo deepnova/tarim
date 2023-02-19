@@ -2,28 +2,73 @@ package com.deepexi.tarimdb.tarimkv;
 
 public class KVSchema {
 
-    public class KVTable {
-        public int id;
+    static class KVTable {
+        public String id;
         public String columnFamily;
         // ...
     }
 
-    public class KVChunk {
-        public int id; // It's hash value
-        public int tableID;
+    static class KVChunk {
+        public String tableID;
+        public long id; // It's hash value
         // ...
     }
 
-    public class KeyValue {
+    static class KeyValue {
+        // 1: new
+        // 2: delete
+        public int op;
         public String key;
         public String value;
         public int encodeVersion;
     }
 
-    public class InternalKeyValue {
+    static class InternalKeyValue {
         public String key;
         public String value;
         public int encodeVersion;
+    }
+
+    static class PrepareScanInfo {
+        public int snapshotID;
+        public List<ChunkDetail> chunkDetails;
+        public MainAccount;
+    }
+
+    static class ChunkDetail {
+        public long chunkID;
+        // 0：none_merge
+        // 1：client_merge
+        // 2：server_merge
+        public int mergePolicy; // only implement 'client_merge' policy first
+        public String mainPath;
+    }
+    
+    static class MainAccount {
+        // 1：S3
+        // 2：HDFS
+        public int accountType;
+        public String username;
+        public String token;
+    }
+
+    static calss DeltaScanParam {
+        // 1：delta-only
+        // 2: full
+        public int scope; 
+        public String tableID;
+        public int snapshotID;
+        public long chunkID;
+        public String lastKey;
+        public int scanSize;
+    }
+
+    static calss PrefixScanParam {
+        public String tableID;
+        public int snapshotID;
+        public long chunkID;
+        public String lastKey;
+        public int scanSize;
     }
 }
 
