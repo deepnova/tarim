@@ -7,8 +7,8 @@ import org.apache.logging.log4j.Logger;
 
 import com.deepexi.tarimdb.util.BasicConfig;
 import com.deepexi.tarimdb.util.Status;
-import com.deepexi.rpc.TarimKVMetaSvc;
-import com.deepexi.rpc.TarimKVMetaSvc.DistributionInfo;
+import com.deepexi.rpc.TarimKVProto;
+import com.deepexi.rpc.TarimKVProto.DistributionInfo;
 
 import org.rocksdb.*;
 import org.rocksdb.util.SizeUnit;
@@ -20,63 +20,36 @@ import org.rocksdb.util.SizeUnit;
  */
 public class TarimKV extends AbstractKV {
 
-    //private final static Logger logger = LoggerFactory.getLogger(this.getClass());
     public final static Logger logger = LogManager.getLogger(TarimKV.class);
 
+    private SlotManager slotManager;
     private KVLocalMetadata lMetadata;
     private TarimKVMetaClient metaClient;
 
-    // An instance per slot, a slot per disk(directory)
-    private Map<String, RocksDB> dbInstances;
-
-    static {
-      logger.debug("Load RocksDB library.");
-      RocksDB.loadLibrary();
-    }
-
     public TarimKV(){
-        dbInstances = new HashMap();
     }
 
+    @Override
     public int init(KVLocalMetadata lMetadata) {
         this.lMetadata = lMetadata;
         getKVMetadata();
-        openRocksDBInstances();
+        slotManager.init(lMetadata.slots);
         return 0;
     }
 
-    public void openRocksDBInstances() {
-
-        for(TarimKVMetaSvc.Slot slot : lMetadata.slots){
-
-            if(slot.getDataPath() == null){
-                logger.error("slot id=" + slot.getId() + ", it's dataPath is null.");
-                //TODO: should set slot status
-                continue;
-            }
-
-            try{
-                Options options = new Options();
-                options.setCreateIfMissing(true);
-                //TODO: custom options
-
-                RocksDB db = RocksDB.open(options, slot.getDataPath());
-
-            } catch (RocksDBException e) {
-              logger.error("slot id=%s caught the expected exception -- %s\n", slot.getId(), e);
-            } catch (IllegalArgumentException e) {
-            }
-        }
-    }
-
-    public void getKVMetadata() {
+    private void getKVMetadata() {
         if(metaClient == null){
-            TarimKVMetaSvc.Node node = lMetadata.getMasterMNode();
+            TarimKVProto.Node node = lMetadata.getMasterMNode();
             if(node == null) throw new NullPointerException("Not found master meta node"); 
             logger.info("get kv metadata from host: " + node.getHost() + ", port: " + node.getPort());
             metaClient = new TarimKVMetaClient(node.getHost(), node.getPort());
         }
         metaClient.getDistribution();
     }
+
+    public void put(KVSchema.KVChunk chunk, KVSchema.KeyValue value) {
+        // no-op
+    }
+
 }
 

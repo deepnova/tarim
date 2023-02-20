@@ -15,7 +15,7 @@ public abstract class AbstractDataModel extends Thread {
 
     public final static Logger logger = LogManager.getLogger(AbstractDataModel.class);
 
-    private Thread thread;
+    //private Thread thread;
     protected TarimKV kv;
 
     public Status init(TarimKV kv) {
@@ -27,11 +27,11 @@ public abstract class AbstractDataModel extends Thread {
 
     @Override
     public void start() {
-        logger.info("Starting thread: " +  getName());
+        /*logger.info("Starting thread: " +  getName());
         if (thread == null) {
            thread = new Thread (this, getName());
            thread.start();
-        }
+        }*/
     }
     public void run() {
         // no-op

@@ -1,20 +1,21 @@
 package com.deepexi.tarimdb.tarimkv;
 
 import com.deepexi.tarimdb.util.Status;
-import com.deepexi.rpc.TarimKVMetaSvc.DataDistributionRequest;
-import com.deepexi.rpc.TarimKVMetaSvc.DataDistributionResponse;
-import com.deepexi.rpc.TarimKVMetaSvc.DistributionInfo;
+import com.deepexi.rpc.TarimKVProto.DataDistributionRequest;
+import com.deepexi.rpc.TarimKVProto.DataDistributionResponse;
+import com.deepexi.rpc.TarimKVProto.DistributionInfo;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.concurrent.TimeUnit;
 import java.util.HashMap;
 import java.util.List;
-import com.deepexi.rpc.TarimKVGrpc;
-import com.deepexi.rpc.TarimKVMetaSvc;
+import com.deepexi.rpc.TarimKVMetaGrpc;
+import com.deepexi.rpc.TarimKVProto;
 import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import org.apache.commons.codec.digest.MurmurHash3;
 
 /**
  * TarimKVMetaClient
@@ -45,19 +46,19 @@ public class TarimKVMetaClient {
     public void refreshDistribution() {
 
         ManagedChannel channel;//客户端与服务器的通信channel
-        TarimKVGrpc.TarimKVBlockingStub blockStub;//阻塞式客户端存根节点
+        TarimKVMetaGrpc.TarimKVMetaBlockingStub blockStub;//阻塞式客户端存根节点
         channel = ManagedChannelBuilder.forAddress(metaHost, metaPort).usePlaintext().build();//指定grpc服务器地址和端口初始化通信channel
-        blockStub = TarimKVGrpc.newBlockingStub(channel);//根据通信channel初始化客户端存根节点
+        blockStub = TarimKVMetaGrpc.newBlockingStub(channel);//根据通信channel初始化客户端存根节点
 
         DataDistributionRequest request = DataDistributionRequest.newBuilder().setTableID(1).build();
         DataDistributionResponse response = blockStub.getDataDistribution(request);
 
         logger.debug("get distribution code: " + response.getCode());
-        for(TarimKVMetaSvc.Node node : response.getDistribution().getDnodesList()){
+        for(TarimKVProto.Node node : response.getDistribution().getDnodesList()){
             logger.debug("distribution node: "+ KVMetadata.ObjToString(node));
         }
 
-        for(TarimKVMetaSvc.RGroupItem rg: response.getDistribution().getRgroupsList()){
+        for(TarimKVProto.RGroupItem rg: response.getDistribution().getRgroupsList()){
             logger.debug("distribution rgroup: "+ KVMetadata.ObjToString(rg));
         }
         dataDist = response.getDistribution();
@@ -66,9 +67,9 @@ public class TarimKVMetaClient {
         // must re-build map
         if(mapSlotsNodes == null) mapSlotsNodes = new HashMap<String, KVLocalMetadata.Node>();
         else mapSlotsNodes.clear();
-        for(TarimKVMetaSvc.Node node: dataDist.getDnodesList()) {
+        for(TarimKVProto.Node node: dataDist.getDnodesList()) {
             if(node.getHost().isEmpty() || node.getPort() == 0) continue;
-            for(TarimKVMetaSvc.Slot slot : node.getSlotsList()){
+            for(TarimKVProto.Slot slot : node.getSlotsList()){
                 if(slot.getId().isEmpty()) continue;
                 mapSlotsNodes.put(slot.getId(), new KVLocalMetadata.Node(node.getHost(), node.getPort()));
             }
@@ -82,9 +83,9 @@ public class TarimKVMetaClient {
         return dataDist;
     }
 
-    public KVLocalMetadata.Node getMasterReplicaNode(TarimKVMetaSvc.RGroupItem rgroup){
-        for(TarimKVMetaSvc.Slot slot : rgroup.getSlotsList()){
-            if(slot.getRole() == TarimKVMetaSvc.SlotRole.SR_MASTER){
+    public KVLocalMetadata.Node getMasterReplicaNode(TarimKVProto.RGroupItem rgroup){
+        for(TarimKVProto.Slot slot : rgroup.getSlotsList()){
+            if(slot.getRole() == TarimKVProto.SlotRole.SR_MASTER){
                 KVLocalMetadata.Node node = mapSlotsNodes.get(slot.getId());
                 if(node == null){
                     logger.error("slot:" + slot.getId() + " not foun node, rgroup:" 
@@ -106,15 +107,15 @@ public class TarimKVMetaClient {
         if(dataDist == null) {
             refreshDistribution();
         }
-        List<TarimKVMetaSvc.RGroupItem> rgroups = dataDist.getRgroupsList();
+        List<TarimKVProto.RGroupItem> rgroups = dataDist.getRgroupsList();
         if(rgroups.size() == 0){
             logger.error("fatal error, not found any rgroup, that means no data node.");
             return null;
         }else if(rgroups.size() == 1){
             return getMasterReplicaNode(rgroups.get(0));
         }else{
-            TarimKVMetaSvc.RGroupItem last;
-            TarimKVMetaSvc.RGroupItem curr;
+            TarimKVProto.RGroupItem last;
+            TarimKVProto.RGroupItem curr;
             for(int i = 1; i < rgroups.size(); i++)
             {
                 last = rgroups.get(i-1);
@@ -125,5 +126,9 @@ public class TarimKVMetaClient {
             }
             return getMasterReplicaNode(rgroups.get(0)); // 所有节点看成一个环，找不到的hash值即分布在第一个节点上。
         }
+    }
+
+    public KVLocalMetadata.Node getReplicaNode(int chunkID) {
+        return getReplicaNode(MurmurHash3.hash32((long)chunkID));
     }
 }

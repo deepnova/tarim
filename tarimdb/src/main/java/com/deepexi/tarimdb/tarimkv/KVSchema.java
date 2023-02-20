@@ -12,8 +12,7 @@ public class KVSchema {
 
     static class KVChunk {
         public String tableID;
-        public long id; // It's hash value
-        // ...
+        public int id; // 统一转换int
     }
 
     static class KeyValue {

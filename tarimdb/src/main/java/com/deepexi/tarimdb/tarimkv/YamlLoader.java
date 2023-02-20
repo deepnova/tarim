@@ -1,7 +1,7 @@
 package com.deepexi.tarimdb.tarimkv;
 
 import com.deepexi.tarimdb.util.Status;
-import com.deepexi.rpc.TarimKVMetaSvc;
+import com.deepexi.rpc.TarimKVProto;
 
 import java.io.InputStream;
 import java.util.Map;
@@ -46,15 +46,15 @@ public class YamlLoader {
         metadata.rgroups = new ArrayList();
         metadata.dnodes = new ArrayList();
 
-        TarimKVMetaSvc.Node.Builder nodeBuiler = TarimKVMetaSvc.Node.newBuilder();
-        TarimKVMetaSvc.Slot.Builder slotBuiler = TarimKVMetaSvc.Slot.newBuilder();
-        TarimKVMetaSvc.RGroupItem.Builder rgBuiler = TarimKVMetaSvc.RGroupItem.newBuilder();
+        TarimKVProto.Node.Builder nodeBuiler = TarimKVProto.Node.newBuilder();
+        TarimKVProto.Slot.Builder slotBuiler = TarimKVProto.Slot.newBuilder();
+        TarimKVProto.RGroupItem.Builder rgBuiler = TarimKVProto.RGroupItem.newBuilder();
         List<Map<String,Object>> objs = (List<Map<String,Object>>) obj.get("dnodes");
         for(Map<String, Object> node: objs) {
             nodeBuiler.setId(node.get("id").toString());
             nodeBuiler.setHost(node.get("host").toString());
             nodeBuiler.setPort(Integer.valueOf(node.get("port").toString()));
-            nodeBuiler.setStatus(TarimKVMetaSvc.NodeStatus.forNumber(Integer.valueOf(node.get("status").toString())));
+            nodeBuiler.setStatus(TarimKVProto.NodeStatus.forNumber(Integer.valueOf(node.get("status").toString())));
 
             List<Map<String,Object>> slots = (List<Map<String,Object>>) node.get("slots");
             for(int i = 0; i < slots.size(); i++) {
@@ -67,8 +67,8 @@ public class YamlLoader {
                          + ", dataPath: " + slot.get("dataPath").toString()
                          + ", role: " + slot.get("role").toString());*/
 
-                slotBuiler.setRole(TarimKVMetaSvc.SlotRole.forNumber(Integer.valueOf(slot.get("role").toString())));
-                slotBuiler.setStatus(TarimKVMetaSvc.SlotStatus.forNumber(Integer.valueOf(slot.get("status").toString())));
+                slotBuiler.setRole(TarimKVProto.SlotRole.forNumber(Integer.valueOf(slot.get("role").toString())));
+                slotBuiler.setStatus(TarimKVProto.SlotStatus.forNumber(Integer.valueOf(slot.get("status").toString())));
                 nodeBuiler.addSlots(i, slotBuiler.build());
             }
             metadata.dnodes.add(nodeBuiler.build());
@@ -80,11 +80,11 @@ public class YamlLoader {
             rgBuiler.setHashValue(Long.valueOf(group.get("hashValue").toString()));
             List<Map<String,Object>> slots = (List<Map<String,Object>>) group.get("slots");
             slotBuiler.setDataPath("");
-            slotBuiler.setStatus(TarimKVMetaSvc.SlotStatus.SS_IDLE);
+            slotBuiler.setStatus(TarimKVProto.SlotStatus.SS_IDLE);
             for(int i = 0; i < slots.size(); i++) {
                 Map<String, Object> slot = slots.get(i);
                 slotBuiler.setId(slot.get("id").toString());
-                slotBuiler.setRole(TarimKVMetaSvc.SlotRole.forNumber(Integer.valueOf(slot.get("role").toString())));
+                slotBuiler.setRole(TarimKVProto.SlotRole.forNumber(Integer.valueOf(slot.get("role").toString())));
                 rgBuiler.addSlots(i, slotBuiler.build());
             }
             metadata.rgroups.add(rgBuiler.build());
@@ -116,8 +116,8 @@ public class YamlLoader {
         metadata.mnodes = new ArrayList();
         metadata.slots = new ArrayList();
 
-        TarimKVMetaSvc.Node.Builder nodeBuiler = TarimKVMetaSvc.Node.newBuilder();
-        TarimKVMetaSvc.Slot.Builder slotBuiler = TarimKVMetaSvc.Slot.newBuilder();
+        TarimKVProto.Node.Builder nodeBuiler = TarimKVProto.Node.newBuilder();
+        TarimKVProto.Slot.Builder slotBuiler = TarimKVProto.Slot.newBuilder();
 
         List<Map<String,Object>> objs = (List<Map<String,Object>>) obj.get("mnodes");
         for(Map<String, Object> node: objs) {
@@ -125,7 +125,7 @@ public class YamlLoader {
             nodeBuiler.setHost(node.get("host").toString());
             nodeBuiler.setPort(Integer.valueOf(node.get("port").toString()));
             //nodeBuiler.role = node.get("role").toString();
-            nodeBuiler.setStatus(TarimKVMetaSvc.NodeStatus.forNumber(Integer.valueOf(node.get("status").toString())));
+            nodeBuiler.setStatus(TarimKVProto.NodeStatus.forNumber(Integer.valueOf(node.get("status").toString())));
             metadata.mnodes.add(nodeBuiler.build());
         }
 
@@ -134,8 +134,8 @@ public class YamlLoader {
             Map<String, Object> slot = slots.get(i);
             slotBuiler.setId(slot.get("id").toString());
             slotBuiler.setDataPath(slot.get("dataPath").toString());
-            slotBuiler.setRole(TarimKVMetaSvc.SlotRole.forNumber(Integer.valueOf(slot.get("role").toString())));
-            slotBuiler.setStatus(TarimKVMetaSvc.SlotStatus.forNumber(Integer.valueOf(slot.get("status").toString())));
+            slotBuiler.setRole(TarimKVProto.SlotRole.forNumber(Integer.valueOf(slot.get("role").toString())));
+            slotBuiler.setStatus(TarimKVProto.SlotStatus.forNumber(Integer.valueOf(slot.get("status").toString())));
             metadata.slots.add(slotBuiler.build());
         }
 

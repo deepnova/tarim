@@ -2,7 +2,7 @@ syntax = "proto3";
 
 option java_multiple_files = false;//以非外部类模式生成
 option java_package = "com.deepexi.rpc";//所在包名
-option java_outer_classname = "TarimKVMetaSvc";//最外层类名称
+option java_outer_classname = "TarimKVProto";//最外层类名称
 
 enum NodeStatus {
     NS_INIT     = 0;
@@ -46,6 +46,18 @@ message RGroupItem {
     repeated Slot slots = 3;
 }
 
+message Chunk {
+    int32 tableID = 1;
+    int32 chunkID = 2;
+}
+
+message KeyValue {
+    int32 op = 1; // 1: new, 2: delete
+    string key = 2;
+    string value = 3;
+    int32 encodeVersion = 4;
+}
+
 message DistributionInfo {
     repeated RGroupItem rgroups = 1;
     repeated Node dnodes = 2;
@@ -55,12 +67,27 @@ message DataDistributionRequest {
     int32 tableID = 1; // 可以不需要
 }
 
+message CommonResponse {
+    int32 code = 1;
+    string msg = 2;
+}
+
 message DataDistributionResponse {
     int32 code = 1;
     string msg = 2;
     DistributionInfo distribution = 3;
 }
 
-service TarimKV {
+message PutRequest {
+    int32 tableID = 1;
+    int32 chunkID = 2;
+    repeated KeyValue values = 3;
+}
+
+service TarimKVMeta {
     rpc GetDataDistribution(DataDistributionRequest) returns (DataDistributionResponse);
+}
+
+service TarimKV {
+    rpc put(PutRequest) returns (CommonResponse);
 }

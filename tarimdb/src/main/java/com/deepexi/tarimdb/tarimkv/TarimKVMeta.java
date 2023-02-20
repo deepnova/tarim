@@ -6,10 +6,10 @@ import io.grpc.stub.StreamObserver;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.deepexi.rpc.TarimKVGrpc;
-import com.deepexi.rpc.TarimKVMetaSvc.DataDistributionRequest;
-import com.deepexi.rpc.TarimKVMetaSvc.DataDistributionResponse;
-import com.deepexi.rpc.TarimKVMetaSvc.DistributionInfo;
+import com.deepexi.rpc.TarimKVMetaGrpc;
+import com.deepexi.rpc.TarimKVProto.DataDistributionRequest;
+import com.deepexi.rpc.TarimKVProto.DataDistributionResponse;
+import com.deepexi.rpc.TarimKVProto.DistributionInfo;
 import com.deepexi.tarimdb.util.BasicConfig;
 import com.deepexi.tarimdb.util.Status;
 
@@ -18,7 +18,7 @@ import com.deepexi.tarimdb.util.Status;
  *  TarimKV metadata server
  *
  */
-public class TarimKVMeta extends TarimKVGrpc.TarimKVImplBase {
+public class TarimKVMeta extends TarimKVMetaGrpc.TarimKVMetaImplBase {
 
     public final static Logger logger = LogManager.getLogger(TarimKVMeta.class);
 
@@ -41,15 +41,15 @@ public class TarimKVMeta extends TarimKVGrpc.TarimKVImplBase {
     }
 
 /*
-    public void sendUnaryRequest(TarimKVMetaSvc.UnaryRequest request,
-                                 StreamObserver<TarimKVMetaSvc.UnaryResponse> responseObserver) {
+    public void sendUnaryRequest(TarimKVProto.UnaryRequest request,
+                                 StreamObserver<TarimKVProto.UnaryResponse> responseObserver) {
         //TODO: Demo
         ByteString message = request.getData();
         logger.debug("server, serviceName:" + request.getServiceName() 
                  + "; methodName:" + request.getMethodName()
                  + "; datas:" + new String(message.toByteArray()) );
 
-        TarimKVMetaSvc.UnaryResponse.Builder builder = TarimKVMetaSvc.UnaryResponse.newBuilder();
+        TarimKVProto.UnaryResponse.Builder builder = TarimKVProto.UnaryResponse.newBuilder();
         builder.setServiceName("GrpcServiceResponse").setMethodName("sendUnaryResponse");
 
         responseObserver.onNext(builder.build());

@@ -2,7 +2,7 @@ package com.deepexi.tarimdb.tarimkv;
 
 import java.util.List;
 import java.lang.StringBuilder;
-import com.deepexi.rpc.TarimKVMetaSvc;
+import com.deepexi.rpc.TarimKVProto;
 
 public class KVMetadata {
 
@@ -11,9 +11,9 @@ public class KVMetadata {
     public String address;
     public int port;
     public String role;
-    public List<TarimKVMetaSvc.Node> mnodes;
-    public List<TarimKVMetaSvc.RGroupItem> rgroups;
-    public List<TarimKVMetaSvc.Node> dnodes;
+    public List<TarimKVProto.Node> mnodes;
+    public List<TarimKVProto.RGroupItem> rgroups;
+    public List<TarimKVProto.Node> dnodes;
 
     public String toString() {
         StringBuilder sb = new StringBuilder();
@@ -24,7 +24,7 @@ public class KVMetadata {
         sb.append(",role=");     sb.append(this.role);
 
         sb.append(",mnodes=[");
-        for(TarimKVMetaSvc.Node node : this.mnodes){
+        for(TarimKVProto.Node node : this.mnodes){
             sb.append("{id=");     sb.append(node.getId());
             sb.append(",host=");   sb.append(node.getHost());
             sb.append(",port=");   sb.append(node.getPort());
@@ -34,11 +34,11 @@ public class KVMetadata {
         sb.append("]");
 
         sb.append(",rgroups=[");
-        for(TarimKVMetaSvc.RGroupItem group : this.rgroups){
+        for(TarimKVProto.RGroupItem group : this.rgroups){
             sb.append("{id=");          sb.append(group.getId());
             sb.append(",hashValue=");   sb.append(group.getHashValue());
             sb.append(",slots=[");
-                for(TarimKVMetaSvc.Slot slot : group.getSlotsList()){
+                for(TarimKVProto.Slot slot : group.getSlotsList()){
                     sb.append("{id=");          sb.append(slot.getId());
                     sb.append(",role=");        sb.append(slot.getRole());
                     sb.append("}");
@@ -48,12 +48,12 @@ public class KVMetadata {
         sb.append("]");
 
         sb.append(",dnodes=[");
-        for(TarimKVMetaSvc.Node node : this.dnodes){
+        for(TarimKVProto.Node node : this.dnodes){
             sb.append("{id=");     sb.append(node.getId());
             sb.append(",host=");   sb.append(node.getHost());
             sb.append(",port=");   sb.append(node.getPort());
             sb.append(",slots=[");
-                for(TarimKVMetaSvc.Slot slot: node.getSlotsList()){
+                for(TarimKVProto.Slot slot: node.getSlotsList()){
                     sb.append("{id=");          sb.append(slot.getId());
                     sb.append(",dataPath=");    sb.append(slot.getDataPath());
                     sb.append(",role=");        sb.append(slot.getRole());
@@ -70,12 +70,12 @@ public class KVMetadata {
         return sb.toString();
     }
 
-    public static String ObjToString(TarimKVMetaSvc.RGroupItem rgItem) {
+    public static String ObjToString(TarimKVProto.RGroupItem rgItem) {
         StringBuilder sb = new StringBuilder();
         sb.append("{id=");   sb.append(rgItem.getId());
         sb.append(",hashValue=");       sb.append(rgItem.getHashValue());
         sb.append(",slots=[");
-            for(TarimKVMetaSvc.Slot slot : rgItem.getSlotsList()){
+            for(TarimKVProto.Slot slot : rgItem.getSlotsList()){
                 sb.append("{id=");      sb.append(slot.getId());
                 sb.append(",role=");    sb.append(slot.getRole());
                 sb.append("}");
@@ -84,13 +84,13 @@ public class KVMetadata {
         return sb.toString();
     }
 
-    public static String ObjToString(TarimKVMetaSvc.Node node) {
+    public static String ObjToString(TarimKVProto.Node node) {
         StringBuilder sb = new StringBuilder();
         sb.append("{id=");     sb.append(node.getId());
         sb.append(",host=");   sb.append(node.getHost());
         sb.append(",port=");   sb.append(node.getPort());
         sb.append(",slots=[");
-            for(TarimKVMetaSvc.Slot slot: node.getSlotsList()){
+            for(TarimKVProto.Slot slot: node.getSlotsList()){
                 sb.append("{id=");          sb.append(slot.getId());
                 sb.append(",dataPath=");    sb.append(slot.getDataPath());
                 sb.append(",role=");        sb.append(slot.getRole());
