@@ -19,7 +19,7 @@ import org.apache.logging.log4j.Logger;
  */
 public class YamlLoader {
 
-    public final static Logger logger = LogManager.getLogger(TarimKVMetaClient.class);
+    public final static Logger logger = LogManager.getLogger(YamlLoader.class);
 
     //@SuppressWarnings(value="unchecked")
     public static Status loadMetaConfig(String filename, KVMetadata metadata) {

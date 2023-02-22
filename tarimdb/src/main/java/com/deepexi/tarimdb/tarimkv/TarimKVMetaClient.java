@@ -19,8 +19,7 @@ import org.apache.commons.codec.digest.MurmurHash3;
 
 /**
  * TarimKVMetaClient
- *  TarimKV metadata client
- *  kv
+ *  
  */
 public class TarimKVMetaClient {
 
@@ -33,16 +32,26 @@ public class TarimKVMetaClient {
     private DistributionInfo dataDist;
     private HashMap<String, KVLocalMetadata.Node> mapSlotsNodes; // <slot:id, Node>
 
+    private static final int ACCESS_REMOTE = 1;
+    private static final int ACCESS_LOCAL = 2;
+    private int accessMode; // 1: remote, 2: local
+
     public TarimKVMetaClient(String host, int port) {
         metaHost = host;
         metaPort = port;
-        //refreshDistribution();
+        accessMode = ACCESS_REMOTE;
     }
-/*
-    public void shutdown() throws InterruptedException{
-        channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+
+    public TarimKVMetaClient(DistributionInfo dataDist) {
+        this.dataDist = dataDist;
+        accessMode = ACCESS_LOCAL;
     }
-*/
+
+    public void refreshDistribution(DistributionInfo dataDist) {
+        this.dataDist = dataDist;
+        rebuildMap();
+    }
+
     public void refreshDistribution() {
 
         ManagedChannel channel;//客户端与服务器的通信channel
@@ -53,7 +62,7 @@ public class TarimKVMetaClient {
         DataDistributionRequest request = DataDistributionRequest.newBuilder().setTableID(1).build();
         DataDistributionResponse response = blockStub.getDataDistribution(request);
 
-        logger.debug("get distribution code: " + response.getCode());
+        logger.debug("get distribution code: " + response.getStatus().getCode());
         for(TarimKVProto.Node node : response.getDistribution().getDnodesList()){
             logger.debug("distribution node: "+ KVMetadata.ObjToString(node));
         }
@@ -63,7 +72,10 @@ public class TarimKVMetaClient {
         }
         dataDist = response.getDistribution();
         channel.shutdown();
+        rebuildMap();
+    }
 
+    private void rebuildMap(){
         // must re-build map
         if(mapSlotsNodes == null) mapSlotsNodes = new HashMap<String, KVLocalMetadata.Node>();
         else mapSlotsNodes.clear();
@@ -99,11 +111,11 @@ public class TarimKVMetaClient {
                 return new KVLocalMetadata.Node(node);
             }
         }
-        logger.error("rgroup:" + rgroup.getId() + "(hashValue:" + rgroup.getHashValue() + ") not found data node.");
+        logger.error("rgroup:" + rgroup.getId() + "(hashValue:" + rgroup.getHashValue() + ") not found master data node.");
         return null;
     }
 
-    public KVLocalMetadata.Node getReplicaNode(long hashValue) {
+    public KVLocalMetadata.Node getMasterReplicaNode(long hashValue) {
         if(dataDist == null) {
             refreshDistribution();
         }
@@ -128,7 +140,62 @@ public class TarimKVMetaClient {
         }
     }
 
-    public KVLocalMetadata.Node getReplicaNode(int chunkID) {
-        return getReplicaNode(MurmurHash3.hash32((long)chunkID));
+    public KVLocalMetadata.Node getMasterReplicaNode(int chunkID) {
+        long hash = MurmurHash3.hash32((long)chunkID);
+        logger.debug("chunkID: " + chunkID + ", hash: " + hash);
+        return getMasterReplicaNode(hash);
+    }
+
+    public KVLocalMetadata.Node getReplicaNode(String slotID) {
+        KVLocalMetadata.Node node = mapSlotsNodes.get(slotID);
+        if(node == null){
+            logger.error("slot:" + slotID + " not found data node.");
+            return null;
+        }
+        logger.debug("slot:" + slotID
+                   + ", host: " + node.host
+                   + ", port: " + node.port);
+        return node;
+    }
+
+    public String getMasterReplicaSlot(TarimKVProto.RGroupItem rgroup){
+        for(TarimKVProto.Slot slot : rgroup.getSlotsList()){
+            if(slot.getRole() == TarimKVProto.SlotRole.SR_MASTER){
+                logger.debug("rgroup:" + rgroup.getId() + "(hashValue:" + rgroup.getHashValue()
+                           + "), master slot:" + slot.getId());
+                return slot.getId();
+            }
+        }
+        logger.error("rgroup:" + rgroup.getId() + "(hashValue:" + rgroup.getHashValue() + ") not found master slot.");
+        return null;
+    }
+    public String getMasterReplicaSlot(long hashValue) {
+        if(dataDist == null) {
+            refreshDistribution();
+        }
+        List<TarimKVProto.RGroupItem> rgroups = dataDist.getRgroupsList();
+        if(rgroups.size() == 0){
+            logger.error("fatal error, not found any rgroup, that means no data node.");
+            return null;
+        }else if(rgroups.size() == 1){
+            return getMasterReplicaSlot(rgroups.get(0));
+        }else{
+            TarimKVProto.RGroupItem last;
+            TarimKVProto.RGroupItem curr;
+            for(int i = 1; i < rgroups.size(); i++)
+            {
+                last = rgroups.get(i-1);
+                curr = rgroups.get(i);
+                if(last.getHashValue() < hashValue && hashValue <= curr.getHashValue()){
+                    return getMasterReplicaSlot(curr);
+                }
+            }
+            return getMasterReplicaSlot(rgroups.get(0)); // 所有节点看成一个环，找不到的hash值即分布在第一个节点上。
+        }
+    }
+    public String getMasterReplicaSlot(int chunkID) {
+        long hash = MurmurHash3.hash32((long)chunkID);
+        logger.debug("chunkID: " + chunkID + ", hash: " + hash);
+        return getMasterReplicaSlot(hash);
     }
 }

@@ -1,8 +1,13 @@
 package com.deepexi.tarimdb.tarimkv;
 
 import java.util.List;
+import java.util.Iterator;
 import java.lang.StringBuilder;
 import com.deepexi.rpc.TarimKVProto;
+import com.deepexi.rpc.TarimKVProto.DataDistributionRequest;
+import com.deepexi.rpc.TarimKVProto.DataDistributionResponse;
+import com.deepexi.rpc.TarimKVProto.DistributionInfo;
+import com.deepexi.rpc.TarimKVProto.StatusResponse;
 
 public class KVMetadata {
 
@@ -14,6 +19,28 @@ public class KVMetadata {
     public List<TarimKVProto.Node> mnodes;
     public List<TarimKVProto.RGroupItem> rgroups;
     public List<TarimKVProto.Node> dnodes;
+
+    private DistributionInfo dataDist;
+
+    public static<T> Iterable<T> iteratorToIterable(Iterator<T> iterator)
+    {
+        return new Iterable<T>() {
+            @Override
+            public Iterator<T> iterator() {
+                return iterator;
+            }
+        };
+    }
+
+    public DistributionInfo toDistributionInfo(boolean rebuild){
+        if(dataDist == null || rebuild == true){
+            DistributionInfo.Builder distBuilder = DistributionInfo.newBuilder();
+            distBuilder.addAllRgroups(iteratorToIterable(rgroups.iterator()));
+            distBuilder.addAllDnodes(iteratorToIterable(dnodes.iterator()));
+            dataDist = distBuilder.build();
+        }
+        return dataDist;
+    }
 
     public String toString() {
         StringBuilder sb = new StringBuilder();
@@ -102,90 +129,4 @@ public class KVMetadata {
         sb.append("}");
         return sb.toString();
     }
-
-    /*public void setId(String id){
-        this.id = id;
-    }
-    public String getId(){
-        return this.id;
-    }*/
-/*
-    // replace by tarimkvmeta.proto below ?
-    public enum NodeStatus {
-        sInit((byte) 0),
-        sRunning((byte) 1),
-        sOffline((byte)2),
-        sFailure((byte)3);
-
-        private NodeStatus(final byte value){
-            value_ = value;
-        }
-
-        public byte getValue() {
-            return value_;
-        }
-
-        private final byte value_;
-    }
-
-    public enum SlotRole {
-        rNone((byte) 0),
-        rMaster((byte) 1),
-        rSecondary((byte)2);
-
-        private SlotRole(final byte value){
-            value_ = value;
-        }
-
-        public byte getValue() {
-            return value_;
-        }
-
-        private final byte value_;
-    }
-
-    public enum SlotStatus {
-        sIdle((byte) 0),
-        sAllocated((byte) 1),
-        sUsing((byte)2),
-        sOffline((byte)3),
-        sFailure((byte)4);
-
-        private SlotStatus(final byte value){
-            value_ = value;
-        }
-
-        public byte getValue() {
-            return value_;
-        }
-
-        private final byte value_;
-    }
-
-    public class Node {
-        public String id;
-        public String host;
-        public int port;
-        public Slot[] slots;
-        public NodeStatus status;
-    }
-
-    public class Slot {
-        public String id;
-        public String dataPath;
-        public SlotRole role;
-        public SlotStatus status;
-    }
-
-    public class RGroupItem {
-        public String id;
-        public int hashValue;
-        public Slot[] slots;
-    }
-    // Distribution is RGroupItem[]
-
-    public RGroupItem[] dataDist;
-    public Node[] dataNodes;
-    public Node[] metaNodes;
-*/
 }

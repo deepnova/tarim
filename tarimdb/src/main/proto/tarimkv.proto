@@ -67,15 +67,14 @@ message DataDistributionRequest {
     int32 tableID = 1; // 可以不需要
 }
 
-message CommonResponse {
+message StatusResponse {
     int32 code = 1;
     string msg = 2;
 }
 
 message DataDistributionResponse {
-    int32 code = 1;
-    string msg = 2;
-    DistributionInfo distribution = 3;
+    StatusResponse status = 1;
+    DistributionInfo distribution = 2;
 }
 
 message PutRequest {
@@ -84,10 +83,38 @@ message PutRequest {
     repeated KeyValue values = 3;
 }
 
+message GetRequest {
+    int32 tableID = 1;
+    int32 chunkID = 2;
+    repeated string keys = 3; // need encodeVersion?
+}
+
+message GetReponse {
+    StatusResponse status = 1;
+    repeated KeyValue values = 2;
+}
+
+message PrefixSeekRequest {
+    int32 tableID = 1;
+    int32 chunkID = 2;
+    int32 scanSize = 3;
+    //int32 snapshotID; // unspported, Temp: get all one-time
+    //string lastKey;   // unspported, Temp: get all one-time
+}
+
+message DeleteRequest {
+    int32 tableID = 1;
+    int32 chunkID = 2;
+    repeated string keys = 3; // need encodeVersion?
+}
+
 service TarimKVMeta {
-    rpc GetDataDistribution(DataDistributionRequest) returns (DataDistributionResponse);
+    rpc getDataDistribution(DataDistributionRequest) returns (DataDistributionResponse);
 }
 
 service TarimKV {
-    rpc put(PutRequest) returns (CommonResponse);
+    rpc put(PutRequest) returns (StatusResponse);
+    rpc get(GetRequest) returns (GetReponse);
+    rpc prefixSeek(PrefixSeekRequest) returns (GetReponse);
+    rpc delete(DeleteRequest) returns (StatusResponse);
 }

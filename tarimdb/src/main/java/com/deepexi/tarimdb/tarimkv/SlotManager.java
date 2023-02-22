@@ -17,7 +17,7 @@ import org.rocksdb.util.SizeUnit;
  */
 public class SlotManager {
 
-    public final static Logger logger = LogManager.getLogger(TarimKV.class);
+    public final static Logger logger = LogManager.getLogger(SlotManager.class);
 
     // An instance a slot, a slot a disk(directory)
     private Map<String, Slot> slots; // a thread for a slot
@@ -44,5 +44,14 @@ public class SlotManager {
             slot.open();
             slots.put(conf.getId(), slot);
         }
+    }
+
+    public Slot getSlot(String slotID){
+        Slot slot = slots.get(slotID);
+        if(slot == null){
+            logger.error("slot:" + slotID + " not found on this node.");
+            return null;
+        }
+        return slot;
     }
 }

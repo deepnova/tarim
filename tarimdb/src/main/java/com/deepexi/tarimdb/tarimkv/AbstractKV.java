@@ -2,7 +2,10 @@ package com.deepexi.tarimdb.tarimkv;
 
 import java.util.List;
 
+import com.deepexi.rpc.TarimKVProto.*;
+
 public abstract class AbstractKV {
+
     public int init(KVLocalMetadata lMetadata){
         // no-op
         return 0;
@@ -10,25 +13,19 @@ public abstract class AbstractKV {
 
     /*------ write ------*/
 
-    /*public void put(KVSchema.KeyValue value) {
-        // no-op
-    }*/
-    public void put(KVSchema.KVChunk chunk, KVSchema.KeyValue value) {
-        // no-op
-    }
-    public void put(KVSchema.KVChunk chunk, List<KVSchema.KeyValue> values) {
+    public void put(PutRequest request) {
         // no-op
     }
 
     /*------ point read ------*/
 
-    public KVSchema.KeyValue get(KVSchema.KVChunk chunk) {
+    public List<KeyValue> get(GetRequest request) {
         // no-op
         return null;
     }
 
-    /*------ chunk scan ------*/
-    // only local
+    /*------ chunk scan (only local) ------*/
+    
     public KVSchema.PrepareScanInfo prepareChunkScan(String tableID, long[] chunks){
         // no-op
         // Note: need keeping the snapshot before complete scan (snapshot counter?).
@@ -36,7 +33,7 @@ public abstract class AbstractKV {
     }
 
     // ifComplete is output parameter, scan not complete until ifComplete == true.
-    public List<KVSchema.KeyValue> deltaChunkScan(KVSchema.DeltaScanParam param, boolean ifComplete){ 
+    public List<KeyValue> deltaChunkScan(KVSchema.DeltaScanParam param, boolean ifComplete){ 
         // no-op
         return null;
     }
@@ -58,17 +55,16 @@ public abstract class AbstractKV {
     }
 */
     // Temp: get all one-time
-    public List<KVSchema.KeyValue> prefixChunkScan(KVSchema.PrefixScanParam param, boolean ifComplete){ 
-        // no-op
+    public List<KeyValue> prefixSeek(PrefixSeekRequest request) {
         return null;
     }
-    // stop scan same as if necessary: public void closeChunkScan(int snapshotID);
 
     /*------ delete ------*/
-    public void delete(KVSchema.KVChunk chunk, String key) {
-        // no-op
+
+    public void delete(DeleteRequest request) {
     }
 
+    // Temp: local only
     public void deleteChunk(KVSchema.KVChunk chunk) {
         // no-op
     }

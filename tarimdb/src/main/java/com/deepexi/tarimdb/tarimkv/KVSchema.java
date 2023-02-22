@@ -2,6 +2,7 @@ package com.deepexi.tarimdb.tarimkv;
 
 import java.util.List;
 
+// define in tarimkv.proto
 public class KVSchema {
 
     static class KVTable {
@@ -14,7 +15,7 @@ public class KVSchema {
         public String tableID;
         public int id; // 统一转换int
     }
-
+/*
     static class KeyValue {
         // 1: new
         // 2: delete
@@ -23,7 +24,7 @@ public class KVSchema {
         public String value;
         public int encodeVersion;
     }
-
+*/
     static class InternalKeyValue {
         public String key;
         public String value;
@@ -66,7 +67,7 @@ public class KVSchema {
 
     static class PrefixScanParam {
         public String tableID;
-        public int snapshotID;
+        //public int snapshotID;
         public long chunkID;
         public String lastKey;
         public int scanSize;

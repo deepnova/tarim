@@ -8,10 +8,7 @@ import java.util.ArrayList;
 
 import org.rocksdb.*;
 import org.rocksdb.util.SizeUnit;
-/**
- * TarimKV
- *
- */
+
 public class TestRocksDB {
 
     static {
@@ -19,7 +16,7 @@ public class TestRocksDB {
     }
 
     public void info() {
-        System.out.println( "This is TarimKV!" );
+        System.out.println( "This is TestRocksDB!" );
     }
 
     public void rocksdbSample() {

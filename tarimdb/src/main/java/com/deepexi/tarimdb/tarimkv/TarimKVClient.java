@@ -8,32 +8,29 @@ import org.apache.logging.log4j.Logger;
 import com.deepexi.tarimdb.util.BasicConfig;
 import com.deepexi.tarimdb.util.Status;
 import com.deepexi.rpc.TarimKVProto;
-import com.deepexi.rpc.TarimKVProto.DistributionInfo;
+import com.deepexi.rpc.TarimKVProto.*;
 
 import org.rocksdb.*;
 import org.rocksdb.util.SizeUnit;
 
 /**
- * TarimKV
- *   TarimKV data server
- *
+ * TarimKVClient
+ *   for access business metadata
  */
-public class TarimKV extends AbstractKV {
+public class TarimKVClient {
 
-    public final static Logger logger = LogManager.getLogger(TarimKV.class);
+    public final static Logger logger = LogManager.getLogger(TarimKVClient.class);
 
-    private SlotManager slotManager;
-    private KVLocalMetadata lMetadata;
     private TarimKVMetaClient metaClient;
+    //private KVMetadata metadata;
+    private KVLocalMetadata lMetadata;
 
-    public TarimKV(){
+    public TarimKVClient(KVLocalMetadata lMetadata){
+        this.lMetadata = lMetadata;
     }
 
-    @Override
-    public int init(KVLocalMetadata lMetadata) {
-        this.lMetadata = lMetadata;
+    public int init() {
         getKVMetadata();
-        slotManager.init(lMetadata.slots);
         return 0;
     }
 
@@ -47,9 +44,8 @@ public class TarimKV extends AbstractKV {
         metaClient.getDistribution();
     }
 
-    public void put(KVSchema.KVChunk chunk, KVSchema.KeyValue value) {
+    public void put(PutRequest request) {
         // no-op
     }
-
 }
 

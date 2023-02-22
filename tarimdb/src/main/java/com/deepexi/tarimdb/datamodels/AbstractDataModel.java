@@ -16,9 +16,9 @@ public abstract class AbstractDataModel extends Thread {
     public final static Logger logger = LogManager.getLogger(AbstractDataModel.class);
 
     //private Thread thread;
-    protected TarimKV kv;
+    protected TarimKVClient kv;
 
-    public Status init(TarimKV kv) {
+    public Status init(TarimKVClient kv) {
         if(kv == null) 
             throw new NullPointerException("kv can't be null.");
         this.kv = kv;
