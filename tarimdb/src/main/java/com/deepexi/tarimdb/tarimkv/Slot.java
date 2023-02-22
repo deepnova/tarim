@@ -44,7 +44,7 @@ public class Slot {
 
             db = RocksDB.open(options, slotConfig.getDataPath());
 
-            columnFamilies = db.listColumnFamilies(options, slotConfig.getDataPath());
+            columnFamilies = Set.copyOf(db.listColumnFamilies(options, slotConfig.getDataPath()));
 
         } catch (RocksDBException e) {
             logger.error("slot id=%s caught the expected exception -- %s\n", slotConfig.getId(), e);
@@ -66,18 +66,17 @@ public class Slot {
         return slotConfig.getId();
     }
 
-    public Status createColumnFamilyIfNotExist(String cfName){
+    public Status createColumnFamilyIfNotExist(String cfName) throws RocksDBException {
         if(columnFamilies.contains(cfName)){
             logger.debug("column family: " + cfName + " exist.");
             return Status.OK;
         }
-        try(final ColumnFamilyHandle columnFamilyHandle = db.createColumnFamily(
+        ColumnFamilyHandle columnFamilyHandle = db.createColumnFamily(
                 new ColumnFamilyDescriptor(cfName.getBytes(),
-                new ColumnFamilyOptions()))) {
-            logger.debug("column family: " + cfName + " not exist, create it now.");
-            assert (columnFamilyHandle != null);
-            columnFamilies.add(cfName.getBytes());
-        }
+                new ColumnFamilyOptions()));
+        logger.debug("column family: " + cfName + " not exist, create it now.");
+        //assert (columnFamilyHandle != null);
+        columnFamilies.add(cfName.getBytes());
         return Status.OK;
     }
 

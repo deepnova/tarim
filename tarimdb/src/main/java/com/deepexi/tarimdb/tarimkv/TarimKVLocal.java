@@ -2,11 +2,14 @@ package com.deepexi.tarimdb.tarimkv;
 
 import java.util.List;
 import java.util.Set;
+//import java.util.String;
 import com.google.protobuf.ByteString;
 import io.grpc.stub.StreamObserver;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.deepexi.rpc.TarimKVProto.*;
+import com.deepexi.rpc.TarimKVProto;
 import com.deepexi.rpc.TarimKVMetaGrpc;
 import com.deepexi.rpc.TarimKVProto.DataDistributionRequest;
 import com.deepexi.rpc.TarimKVProto.DataDistributionResponse;
@@ -15,8 +18,8 @@ import com.deepexi.rpc.TarimKVProto.StatusResponse;
 import com.deepexi.tarimdb.util.BasicConfig;
 import com.deepexi.tarimdb.util.Status;
 
-import com.deepexi.rpc.TarimKVProto.*;
-import com.deepexi.rpc.TarimKVProto;
+import org.rocksdb.*;
+import org.rocksdb.util.SizeUnit;
 
 /**
  * TarimKVLocal
@@ -72,7 +75,7 @@ public class TarimKVLocal {
                 statusBuilder.setMsg(Status.MASTER_SLOT_NOT_FOUND.getMsg());
                 break;
             }
-        }while(0);
+        }while(false);
 
         return statusBuilder.build();
     } 
@@ -83,7 +86,7 @@ public class TarimKVLocal {
         statusBuilder.setMsg(Status.OK.getMsg());
         if(request.getTableID() > 0
            && request.getChunkID() > 0 
-           && request.getKeysCount() > 0) {
+           && request.getValuesCount() > 0) {
             return statusBuilder.build();
         }
         statusBuilder.setCode(Status.PARAM_ERROR.getCode());
@@ -92,18 +95,18 @@ public class TarimKVLocal {
     }
     /**
      */
-    public StatusResponse put(PutRequest request) {
+    public StatusResponse put(PutRequest request) throws RocksDBException {
         StatusResponse status = validPutParam(request);
         if(status.getCode() != Status.OK.getCode()){
             return status;
         }
-        Slot slot;
+        Slot slot = null;
         status = getSlot(request.getChunkID(), slot);
         if(status.getCode() != Status.OK.getCode()){
             return status;
         }
 
-        cfName = Integer.toString(request.getTableID());
+        String cfName = Integer.toString(request.getTableID());
         slot.createColumnFamilyIfNotExist(cfName);
 
         // get db(rocksdb instance) // TODO: lock db 
@@ -112,7 +115,8 @@ public class TarimKVLocal {
         // writing key-values
         WriteOptions writeOpt = new WriteOptions();
         WriteBatch batch = new WriteBatch();
-        batch.put("k", "v");
+        //batch.put(String.getBytes("k"), String.getBytes("v"));
+        batch.put("k".getBytes(), "v".getBytes());
         db.write(writeOpt, batch);
 
         return status;
