@@ -41,7 +41,15 @@ public class SlotManager {
     private void openSlots() {
         for(TarimKVProto.Slot conf : slotsConfig){
             Slot slot = new Slot(conf);
-            slot.open();
+            try{
+                slot.open();
+            } catch (RocksDBException e) {
+                logger.error("slot id=%s caught the expected exception -- %s\n", conf.getId(), e);
+            } catch (IllegalArgumentException e) {
+                logger.error("slot id=%s caught the expected exception -- %s\n", conf.getId(), e);
+            } catch (Exception e) {
+                logger.error("slot id=%s caught the expected exception -- %s\n", conf.getId(), e);
+            }
             slots.put(conf.getId(), slot);
         }
     }

@@ -3,6 +3,8 @@ package com.deepexi.tarimdb.tarimkv;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.lang.IllegalArgumentException;
 import org.apache.logging.log4j.LogManager;
@@ -24,51 +26,37 @@ public class Slot {
     private TarimKVProto.Slot slotConfig;
     private RocksDB db;
     //private Set<byte[]> columnFamilies;
-    private map<byte[], ColumnFamilyHandle> mapColumnFamilyHandles;
+    private Map<byte[], ColumnFamilyHandle> mapColumnFamilyHandles;
 
     public Slot(TarimKVProto.Slot slot){
         slotConfig = slot;
     }
 
-    public void open() /*throws Exception*/ { // why can't throws, must catch 'Exception' 'RocksDBException' ...
+    public void open() throws Exception, RocksDBException, IllegalArgumentException {
         if(slotConfig.getDataPath() == null){
             logger.error("slot id=" + slotConfig.getId() + ", it's dataPath is null.");
-            //TODO: should set slot status
-            //continue;
             throw new IllegalArgumentException("slot dataPath is null");
         }
+            
+        List<ColumnFamilyDescriptor> cfDescriptors = new ArrayList<>();
+        List<ColumnFamilyHandle> cfHandles = new ArrayList<>();
 
-        try {
-            Options options = new Options();
-            options.setCreateIfMissing(true);
-            options.setCreateMissingColumnFamilies(true);
+        List<byte[]> cfList = db.listColumnFamilies(new Options(), slotConfig.getDataPath());
+        //TODO: what will happen while before DB create ?
+        if(cfList.isEmpty()) cfList.add(RocksDB.DEFAULT_COLUMN_FAMILY);
+        for(byte[] cfName : cfList){
+            ColumnFamilyOptions cfOptions = new ColumnFamilyOptions();
+            cfDescriptors.add(new ColumnFamilyDescriptor(cfName, cfOptions));
+        }
 
-            List<ColumnFamilyDescriptor> cfDescriptors = new ArrayList<>();
-            List<ColumnFamilyHandle> cfHandles = new ArrayList<>();
+        DBOptions dbOptions = new DBOptions();
+        dbOptions.setCreateIfMissing(true);
+        dbOptions.setCreateMissingColumnFamilies(true);
+        db = RocksDB.open(dbOptions, slotConfig.getDataPath(), cfDescriptors, cfHandles);
 
-            List<byte[]> cfList = db.listColumnFamilies(options, slotConfig.getDataPath());
-            for(byte[] cfName : cfList){
-                //TODO: custom options
-                cfDescriptors.add(new ColumnFamilyDescriptor(cfName, new ColumnFamilyOptions()));
-            }
-
-            db = RocksDB.open(options, slotConfig.getDataPath(), cfDescriptors, cfHandles);
-
-            for(ColumnFamilyHandle cfh : cfHandles){
-                 mapColumnFamilyHandles.add();
-                 //TODO
-            }
-
-
-        } catch (RocksDBException e) {
-            logger.error("slot id=%s caught the expected exception -- %s\n", slotConfig.getId(), e);
-            //throw new RocksDBException("RocksDB open failed.");
-        } catch (IllegalArgumentException e) {
-            logger.error("slot id=%s caught the expected exception -- %s\n", slotConfig.getId(), e);
-            throw new IllegalArgumentException("RocksDB open failed.");
-        } catch (Exception e) {
-            logger.error("slot id=%s caught the expected exception -- %s\n", slotConfig.getId(), e);
-            //throw new Exception("RocksDB open failed.");
+        mapColumnFamilyHandles = new HashMap<>();
+        for(ColumnFamilyHandle cfh : cfHandles){
+             mapColumnFamilyHandles.put(cfh.getName(), cfh);
         }
     }
 
@@ -81,7 +69,7 @@ public class Slot {
     }
 
     public void createColumnFamilyIfNotExist(String cfName) throws RocksDBException {
-        if(columnFamilies.contains(cfName)){
+        if(mapColumnFamilyHandles.containsKey(cfName)){
             logger.debug("column family: " + cfName + " exist.");
             return;
         }
@@ -91,7 +79,7 @@ public class Slot {
                 new ColumnFamilyOptions()));
         logger.debug("column family: " + cfName + " not exist, create it now.");
 
-        mapColumnFamilyHandles.add(cfName.getBytes(), cfHandle);
+        mapColumnFamilyHandles.put(cfName.getBytes(), cfHandle);
     }
 
     public void batchWrite(final WriteOptions writeOpts, final WriteBatch updates) throws RocksDBException {
