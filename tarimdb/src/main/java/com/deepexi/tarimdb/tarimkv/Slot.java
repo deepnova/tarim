@@ -19,11 +19,12 @@ import com.deepexi.tarimdb.util.Status;
  *
  */
 public class Slot {
+    public final static Logger logger = LogManager.getLogger(Slot.class);
+
     private TarimKVProto.Slot slotConfig;
     private RocksDB db;
-    private Set<byte[]> columnFamilies;
-
-    public final static Logger logger = LogManager.getLogger(Slot.class);
+    //private Set<byte[]> columnFamilies;
+    private map<byte[], ColumnFamilyHandle> mapColumnFamilyHandles;
 
     public Slot(TarimKVProto.Slot slot){
         slotConfig = slot;
@@ -40,11 +41,24 @@ public class Slot {
         try {
             Options options = new Options();
             options.setCreateIfMissing(true);
-            //TODO: custom options
+            options.setCreateMissingColumnFamilies(true);
 
-            db = RocksDB.open(options, slotConfig.getDataPath());
+            List<ColumnFamilyDescriptor> cfDescriptors = new ArrayList<>();
+            List<ColumnFamilyHandle> cfHandles = new ArrayList<>();
 
-            columnFamilies = Set.copyOf(db.listColumnFamilies(options, slotConfig.getDataPath()));
+            List<byte[]> cfList = db.listColumnFamilies(options, slotConfig.getDataPath());
+            for(byte[] cfName : cfList){
+                //TODO: custom options
+                cfDescriptors.add(new ColumnFamilyDescriptor(cfName, new ColumnFamilyOptions()));
+            }
+
+            db = RocksDB.open(options, slotConfig.getDataPath(), cfDescriptors, cfHandles);
+
+            for(ColumnFamilyHandle cfh : cfHandles){
+                 mapColumnFamilyHandles.add();
+                 //TODO
+            }
+
 
         } catch (RocksDBException e) {
             logger.error("slot id=%s caught the expected exception -- %s\n", slotConfig.getId(), e);
@@ -66,18 +80,24 @@ public class Slot {
         return slotConfig.getId();
     }
 
-    public Status createColumnFamilyIfNotExist(String cfName) throws RocksDBException {
+    public void createColumnFamilyIfNotExist(String cfName) throws RocksDBException {
         if(columnFamilies.contains(cfName)){
             logger.debug("column family: " + cfName + " exist.");
-            return Status.OK;
+            return;
         }
-        ColumnFamilyHandle columnFamilyHandle = db.createColumnFamily(
+
+        ColumnFamilyHandle cfHandle = db.createColumnFamily( 
                 new ColumnFamilyDescriptor(cfName.getBytes(),
                 new ColumnFamilyOptions()));
         logger.debug("column family: " + cfName + " not exist, create it now.");
-        //assert (columnFamilyHandle != null);
-        columnFamilies.add(cfName.getBytes());
-        return Status.OK;
+
+        mapColumnFamilyHandles.add(cfName.getBytes(), cfHandle);
+    }
+
+    public void batchWrite(final WriteOptions writeOpts, final WriteBatch updates) throws RocksDBException {
+        // TODO: need lock ?
+        // cf?
+        db.write(writeOpts, updates);
     }
 
 }

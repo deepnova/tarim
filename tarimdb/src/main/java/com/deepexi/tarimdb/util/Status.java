@@ -13,11 +13,16 @@ public enum Status {
     ,SERVER_START_FAILED(3, "server start failed")
     ,NULL_POINTER       (4, "null pointer")
 
+    ,UNKNOWN_ERROR      (99, "unknown error")
+
     // for API (100~199)
     ,DISTRIBUTION_ERROR (100, "data distribution error")
 
     // for Resource Manager (200~299)
     ,MASTER_SLOT_NOT_FOUND (200, "master slot not found")
+
+    //Storage Unit (500~599)
+    ,KEY_ENCODE_ERROR   (500, "key encode error")
 
     // for replica manager (700~799)
 
@@ -26,7 +31,7 @@ public enum Status {
     private int code;
     private String msg;
 
-    Status(int code){
+    private Status(int code){
         this.code = code;
         //this.msg = getMsg(code);
     }

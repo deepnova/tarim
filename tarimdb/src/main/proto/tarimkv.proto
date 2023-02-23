@@ -52,6 +52,12 @@ message Chunk {
 }
 
 message KeyValue {
+    string key = 2;
+    string value = 3;
+    int32 encodeVersion = 4;
+}
+
+message KeyValueOp {
     int32 op = 1; // 1: new, 2: delete
     string key = 2;
     string value = 3;
@@ -91,7 +97,7 @@ message GetRequest {
 
 message GetReponse {
     StatusResponse status = 1;
-    repeated KeyValue values = 2;
+    repeated KeyValueOp values = 2;
 }
 
 message PrefixSeekRequest {
@@ -112,7 +118,7 @@ service TarimKVMeta {
     rpc getDataDistribution(DataDistributionRequest) returns (DataDistributionResponse);
 }
 
-service TarimKV {
+service TarimKV { // for DB metadata
     rpc put(PutRequest) returns (StatusResponse);
     rpc get(GetRequest) returns (GetReponse);
     rpc prefixSeek(PrefixSeekRequest) returns (GetReponse);

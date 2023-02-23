@@ -14,8 +14,8 @@ import com.deepexi.rpc.TarimKVMetaGrpc;
 import com.deepexi.rpc.TarimKVProto.DataDistributionRequest;
 import com.deepexi.rpc.TarimKVProto.DataDistributionResponse;
 import com.deepexi.rpc.TarimKVProto.DistributionInfo;
-import com.deepexi.rpc.TarimKVProto.StatusResponse;
-import com.deepexi.tarimdb.util.BasicConfig;
+//import com.deepexi.rpc.TarimKVProto.StatusResponse;
+import com.deepexi.tarimdb.util.TarimKVException;
 import com.deepexi.tarimdb.util.Status;
 
 import org.rocksdb.*;
@@ -30,7 +30,6 @@ public class TarimKVLocal {
 
     public final static Logger logger = LogManager.getLogger(TarimKVLocal.class);
 
-    //private List<TarimKVProto.Slot> slotsConf;
     private KVLocalMetadata lMetadata;
     private SlotManager slotManager;
     private TarimKVMetaClient metaClient;
@@ -45,81 +44,55 @@ public class TarimKVLocal {
         slotManager.init(lMetadata.slots);
     }
 
-    private StatusResponse getSlot(int chunkID, Slot slot){
-        StatusResponse.Builder statusBuilder = StatusResponse.newBuilder();
-        statusBuilder.setCode(Status.OK.getCode());
-        statusBuilder.setMsg(Status.OK.getMsg());
-
+    private void getSlot(int chunkID, Slot slot) throws TarimKVException {
+        boolean refreshed = false;
+        String slotID;
         do{
-            boolean refreshed = false;
-            String slotID;
-            do{
-                slotID = metaClient.getMasterReplicaSlot(chunkID);
-                KVLocalMetadata.Node node = metaClient.getReplicaNode(slotID);
-                if(node.host != lMetadata.address || node.port != lMetadata.port){
-                    if(refreshed == true){
-                        statusBuilder.setCode(Status.DISTRIBUTION_ERROR.getCode());
-                        statusBuilder.setMsg(Status.DISTRIBUTION_ERROR.getMsg());
-                        break;
-                    }
-                    metaClient.refreshDistribution();
-                    refreshed = true;
-                }else{
-                    break;
+            slotID = metaClient.getMasterReplicaSlot(chunkID);
+            KVLocalMetadata.Node node = metaClient.getReplicaNode(slotID);
+            if(node.host != lMetadata.address || node.port != lMetadata.port){
+                if(refreshed == true){
+                    throw new TarimKVException(Status.DISTRIBUTION_ERROR);
                 }
-            }while(true);
-
-            slot = slotManager.getSlot(slotID);
-            if(slot == null){
-                statusBuilder.setCode(Status.MASTER_SLOT_NOT_FOUND.getCode());
-                statusBuilder.setMsg(Status.MASTER_SLOT_NOT_FOUND.getMsg());
+                metaClient.refreshDistribution();
+                refreshed = true;
+            }else{
                 break;
             }
-        }while(false);
+        }while(true);
 
-        return statusBuilder.build();
+        slot = slotManager.getSlot(slotID);
+        if(slot == null){
+            throw new TarimKVException(Status.MASTER_SLOT_NOT_FOUND);
+        }
     } 
 
-    private StatusResponse validPutParam(PutRequest request){
-        StatusResponse.Builder statusBuilder = StatusResponse.newBuilder();
-        statusBuilder.setCode(Status.OK.getCode());
-        statusBuilder.setMsg(Status.OK.getMsg());
+    private void validPutParam(PutRequest request) throws TarimKVException{
         if(request.getTableID() > 0
            && request.getChunkID() > 0 
            && request.getValuesCount() > 0) {
-            return statusBuilder.build();
+           return;
         }
-        statusBuilder.setCode(Status.PARAM_ERROR.getCode());
-        statusBuilder.setMsg(Status.PARAM_ERROR.getMsg());
-        return statusBuilder.build();
+        throw new TarimKVException(Status.PARAM_ERROR);
     }
     /**
      */
-    public StatusResponse put(PutRequest request) throws RocksDBException {
-        StatusResponse status = validPutParam(request);
-        if(status.getCode() != Status.OK.getCode()){
-            return status;
-        }
+    public void put(PutRequest request) throws RocksDBException, TarimKVException {
+        validPutParam(request);
         Slot slot = null;
-        status = getSlot(request.getChunkID(), slot);
-        if(status.getCode() != Status.OK.getCode()){
-            return status;
-        }
+        getSlot(request.getChunkID(), slot);
 
         String cfName = Integer.toString(request.getTableID());
         slot.createColumnFamilyIfNotExist(cfName);
 
-        // get db(rocksdb instance) // TODO: lock db 
-        RocksDB db = slot.getDB();
-        
         // writing key-values
         WriteOptions writeOpt = new WriteOptions();
         WriteBatch batch = new WriteBatch();
-        //batch.put(String.getBytes("k"), String.getBytes("v"));
-        batch.put("k".getBytes(), "v".getBytes());
-        db.write(writeOpt, batch);
-
-        return status;
+        for(TarimKVProto.KeyValue kv : request.getValuesList()){
+            batch.put(KeyValueCodec.KeyEncode( new KeyValueCodec(request.getChunkID(), kv) ).getBytes()
+                      , kv.getValue().getBytes());
+        }
+        slot.batchWrite(writeOpt, batch); // TODO: need lock
     }
 
     /**
