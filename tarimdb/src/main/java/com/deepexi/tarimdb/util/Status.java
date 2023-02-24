@@ -23,6 +23,7 @@ public enum Status {
 
     //Storage Unit (500~599)
     ,KEY_ENCODE_ERROR   (500, "key encode error")
+    ,ROCKSDB_ERROR      (501, "rocksdb error")
 
     // for replica manager (700~799)
 

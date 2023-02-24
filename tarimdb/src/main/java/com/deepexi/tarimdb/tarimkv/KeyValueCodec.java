@@ -1,5 +1,8 @@
 package com.deepexi.tarimdb.tarimkv;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.deepexi.rpc.TarimKVProto;
 import com.deepexi.tarimdb.util.Status;
 import com.deepexi.tarimdb.util.TarimKVException;
@@ -9,6 +12,8 @@ import com.deepexi.tarimdb.util.TarimKVException;
  *  
  */
 public class KeyValueCodec {
+    private final static Logger logger = LogManager.getLogger(KeyValueCodec.class);
+
     private static String KEY_SEPARATOR = "_";
 
     public int chunkID;
@@ -19,17 +24,21 @@ public class KeyValueCodec {
     public KeyValueCodec(int chunkID, TarimKVProto.KeyValue value){
         this.chunkID = chunkID;
         this.value = value;
-        //this.value = TarimKVProto.KeyValue.newBuilder(value).build();
+        logger.debug("KeyValueCodec(), chunkID: " + this.chunkID 
+                  + ", key: " + this.value.getKey()
+                  + ", encodeVersion: " + this.value.getEncodeVersion());
     }
     // Key固定编码：{chunkID}{separator}{primaryKey}{separator}{encodeVersion}
     public static String KeyEncode(KeyValueCodec kv) {
-        String internalKey = new String();
-        internalKey.format("%d%s%s%s%d"
-                           ,kv.chunkID
-                           ,KeyValueCodec.KEY_SEPARATOR
-                           ,kv.value.getKey()
-                           ,KeyValueCodec.KEY_SEPARATOR
-                           ,kv.value.getEncodeVersion());
+        String internalKey = String.format("%d%s%s%s%d"
+                                          ,kv.chunkID
+                                          ,KeyValueCodec.KEY_SEPARATOR
+                                          ,kv.value.getKey()
+                                          ,KeyValueCodec.KEY_SEPARATOR
+                                          ,kv.value.getEncodeVersion());
+        logger.debug("KeyEncode(), chunkID: " + kv.chunkID 
+                  + ", key: " + kv.value.getKey()
+                  + ", encodeVersion: " + kv.value.getEncodeVersion() + ", internalKey: " + internalKey);
         return internalKey;
     }
     public static KeyValueCodec KeyDecode(String internalKey) throws TarimKVException{

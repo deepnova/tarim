@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.lang.StringBuilder;
 import java.lang.IllegalArgumentException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -15,6 +16,7 @@ import org.rocksdb.*;
 import org.rocksdb.util.SizeUnit;
 
 import com.deepexi.tarimdb.util.Status;
+import com.deepexi.tarimdb.util.TarimKVException;
 
 /**
  * SlotManager
@@ -25,8 +27,8 @@ public class Slot {
 
     private TarimKVProto.Slot slotConfig;
     private RocksDB db;
-    //private Set<byte[]> columnFamilies;
-    private Map<byte[], ColumnFamilyHandle> mapColumnFamilyHandles;
+    //private Map<byte[], ColumnFamilyHandle> mapColumnFamilyHandles;
+    private Map<String, ColumnFamilyHandle> mapColumnFamilyHandles;
 
     public Slot(TarimKVProto.Slot slot){
         slotConfig = slot;
@@ -41,9 +43,14 @@ public class Slot {
         List<ColumnFamilyDescriptor> cfDescriptors = new ArrayList<>();
         List<ColumnFamilyHandle> cfHandles = new ArrayList<>();
 
-        List<byte[]> cfList = db.listColumnFamilies(new Options(), slotConfig.getDataPath());
+        List<byte[]> cfList = RocksDB.listColumnFamilies(new Options(), slotConfig.getDataPath());
         //TODO: what will happen while before DB create ?
-        if(cfList.isEmpty()) cfList.add(RocksDB.DEFAULT_COLUMN_FAMILY);
+        if(cfList == null){
+            cfList.add(RocksDB.DEFAULT_COLUMN_FAMILY);
+        }else if(cfList.isEmpty()){
+            cfList = new ArrayList<>(); // RocksDB.listColumnFamilies() returns ArrayList.asList(), can't add.
+            cfList.add(RocksDB.DEFAULT_COLUMN_FAMILY);
+        }
         for(byte[] cfName : cfList){
             ColumnFamilyOptions cfOptions = new ColumnFamilyOptions();
             cfDescriptors.add(new ColumnFamilyDescriptor(cfName, cfOptions));
@@ -56,7 +63,7 @@ public class Slot {
 
         mapColumnFamilyHandles = new HashMap<>();
         for(ColumnFamilyHandle cfh : cfHandles){
-             mapColumnFamilyHandles.put(cfh.getName(), cfh);
+             mapColumnFamilyHandles.put(new String(cfh.getName()), cfh);
         }
     }
 
@@ -77,14 +84,37 @@ public class Slot {
         ColumnFamilyHandle cfHandle = db.createColumnFamily( 
                 new ColumnFamilyDescriptor(cfName.getBytes(),
                 new ColumnFamilyOptions()));
-        logger.debug("column family: " + cfName + " not exist, create it now.");
+        logger.info("column family: " + cfName + " not exist, create it now."
+                   + " handle name: " + new String(cfHandle.getName()) + ", handle id: " + cfHandle.getID());
 
-        mapColumnFamilyHandles.put(cfName.getBytes(), cfHandle);
+        mapColumnFamilyHandles.put(cfName, cfHandle);
     }
 
-    public void batchWrite(final WriteOptions writeOpts, final WriteBatch updates) throws RocksDBException {
-        // TODO: need lock ?
-        // cf?
+    private String mapColumnFamilyHandlestoString(String key) throws RocksDBException {
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, ColumnFamilyHandle> entry : mapColumnFamilyHandles.entrySet()) {
+            ColumnFamilyHandle cfh = entry.getValue();
+            sb.append("{key=");             sb.append(entry.getKey());
+            sb.append(",{value=[name:");    sb.append(new String(cfh.getName()));
+            sb.append(",id:");              sb.append(cfh.getID());
+            sb.append("]}},");
+            logger.info("map key compare: " + (key == entry.getKey()));
+        }
+        return sb.toString();
+    }
+
+    public ColumnFamilyHandle getColumnFamilyHandle(final String cfName) throws RocksDBException, TarimKVException {
+        // TODO: WriteBatch and Iterator need lock ?
+        ColumnFamilyHandle cfHandle = mapColumnFamilyHandles.get(cfName);
+        logger.info("CF handles: " + mapColumnFamilyHandlestoString(cfName));
+        if(cfHandle == null){
+            logger.error("not found ColumnFamilyHandle of column family: " + cfName);
+            throw new TarimKVException(Status.NULL_POINTER);
+        }
+        return cfHandle;
+    }
+
+    public void batchWrite(final WriteOptions writeOpts, final WriteBatch updates) throws RocksDBException{
         db.write(writeOpts, updates);
     }
 

@@ -5,7 +5,7 @@ import java.util.HashMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.deepexi.tarimdb.util.BasicConfig;
+import com.deepexi.tarimdb.util.TarimKVException;
 import com.deepexi.tarimdb.util.Status;
 import com.deepexi.rpc.TarimKVProto;
 import com.deepexi.rpc.TarimKVProto.*;
@@ -24,13 +24,22 @@ public class TarimKVClient {
     private TarimKVMetaClient metaClient;
     //private KVMetadata metadata;
     private KVLocalMetadata lMetadata;
+    private TarimKVLocal kvLocal;
 
     public TarimKVClient(KVLocalMetadata lMetadata){
         this.lMetadata = lMetadata;
     }
 
+    // for unit test
+    public TarimKVClient(TarimKVMetaClient metaClient, KVLocalMetadata lMetadata){
+        this.metaClient = metaClient;
+        this.lMetadata = lMetadata;
+    }
+
     public int init() {
         getKVMetadata();
+        kvLocal = new TarimKVLocal(metaClient, lMetadata);
+        kvLocal.init();
         return 0;
     }
 
@@ -44,8 +53,16 @@ public class TarimKVClient {
         metaClient.getDistribution();
     }
 
-    public void put(PutRequest request) {
-        // no-op
+    public void put(PutRequest request) throws TarimKVException {
+        //TODO: write local or remote rocksdb here if necessary
+        //TODO: check if distribution is correct. 
+        logger.debug("----- into put -----");
+        try{
+            kvLocal.put(request);
+        } catch (RocksDBException e){
+            logger.error("rocksdb exception: %s\n", e);
+            throw new TarimKVException(Status.ROCKSDB_ERROR);
+        }
     }
 }
 

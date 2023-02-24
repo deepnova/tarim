@@ -2,7 +2,6 @@ package com.deepexi.tarimdb.tarimkv;
 
 import java.util.List;
 import java.util.Set;
-//import java.util.String;
 import com.google.protobuf.ByteString;
 import io.grpc.stub.StreamObserver;
 import org.apache.logging.log4j.LogManager;
@@ -14,7 +13,6 @@ import com.deepexi.rpc.TarimKVMetaGrpc;
 import com.deepexi.rpc.TarimKVProto.DataDistributionRequest;
 import com.deepexi.rpc.TarimKVProto.DataDistributionResponse;
 import com.deepexi.rpc.TarimKVProto.DistributionInfo;
-//import com.deepexi.rpc.TarimKVProto.StatusResponse;
 import com.deepexi.tarimdb.util.TarimKVException;
 import com.deepexi.tarimdb.util.Status;
 
@@ -37,6 +35,7 @@ public class TarimKVLocal {
     public TarimKVLocal(TarimKVMetaClient metaClient, KVLocalMetadata lMetadata) {
         this.metaClient = metaClient;
         this.lMetadata = lMetadata;
+        slotManager = new SlotManager();
         logger.debug("TarimKVLocal constructor, local metadata: " + lMetadata.toString());
     }
 
@@ -44,7 +43,7 @@ public class TarimKVLocal {
         slotManager.init(lMetadata.slots);
     }
 
-    private void getSlot(int chunkID, Slot slot) throws TarimKVException {
+    private Slot getSlot(int chunkID) throws TarimKVException {
         boolean refreshed = false;
         String slotID;
         do{
@@ -61,10 +60,11 @@ public class TarimKVLocal {
             }
         }while(true);
 
-        slot = slotManager.getSlot(slotID);
+        Slot slot = slotManager.getSlot(slotID);
         if(slot == null){
             throw new TarimKVException(Status.MASTER_SLOT_NOT_FOUND);
         }
+        return slot;
     } 
 
     private void validPutParam(PutRequest request) throws TarimKVException{
@@ -79,20 +79,24 @@ public class TarimKVLocal {
      */
     public void put(PutRequest request) throws RocksDBException, TarimKVException {
         validPutParam(request);
-        Slot slot = null;
-        getSlot(request.getChunkID(), slot);
-
         String cfName = Integer.toString(request.getTableID());
+
+        Slot slot = getSlot(request.getChunkID());
         slot.createColumnFamilyIfNotExist(cfName);
+        ColumnFamilyHandle cfh = slot.getColumnFamilyHandle(cfName);
 
         // writing key-values
         WriteOptions writeOpt = new WriteOptions();
         WriteBatch batch = new WriteBatch();
+        String key;
         for(TarimKVProto.KeyValue kv : request.getValuesList()){
-            batch.put(KeyValueCodec.KeyEncode( new KeyValueCodec(request.getChunkID(), kv) ).getBytes()
-                      , kv.getValue().getBytes());
+            key = KeyValueCodec.KeyEncode( new KeyValueCodec(request.getChunkID(), kv) );
+            batch.put(cfh
+                      ,key.getBytes()
+                      ,kv.getValue().getBytes());
+            logger.debug("for WriteBatch, key: " + key + ", value: " + kv.getValue());
         }
-        slot.batchWrite(writeOpt, batch); // TODO: need lock
+        slot.batchWrite(writeOpt, batch);
     }
 
     /**

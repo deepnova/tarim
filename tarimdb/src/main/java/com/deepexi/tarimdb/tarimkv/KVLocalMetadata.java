@@ -15,6 +15,7 @@ public class KVLocalMetadata {
     public int port;
 
     public TarimKVProto.Node getMasterMNode() {
+        if(mnodes == null || mnodes.isEmpty()) return null;
         for(TarimKVProto.Node node : this.mnodes){
             return node; // TODO: 暂未实现主节点查找逻辑
         }
@@ -71,7 +72,7 @@ public class KVLocalMetadata {
         return sb.toString();
     }
 
-    static class Node {
+    public static class Node {
         public String host;
         public int port;
         public Node(String host, int port) {

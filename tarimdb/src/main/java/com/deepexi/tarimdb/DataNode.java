@@ -53,7 +53,7 @@ public class DataNode extends AbstractNode {
 
         try{
             for(AbstractDataModel model : models) {
-                model.start();
+                model.start(); //TODO: thread pool
             }
             for(AbstractDataModel model : models) {
                 model.join();

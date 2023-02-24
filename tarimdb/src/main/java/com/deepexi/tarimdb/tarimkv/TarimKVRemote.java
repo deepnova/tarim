@@ -21,7 +21,7 @@ import com.deepexi.rpc.TarimKVGrpc;
 /**
  * TarimKVRemote
  *  Server of business metadata 
- *  Run with TarimKVMeta
+ *  Run with TarimKVMeta (How about run with DataNode?)
  *
  */
 public class TarimKVRemote extends TarimKVGrpc.TarimKVImplBase {
