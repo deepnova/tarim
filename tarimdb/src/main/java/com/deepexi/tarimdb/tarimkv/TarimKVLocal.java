@@ -15,6 +15,7 @@ import com.deepexi.rpc.TarimKVProto.DataDistributionResponse;
 import com.deepexi.rpc.TarimKVProto.DistributionInfo;
 import com.deepexi.tarimdb.util.TarimKVException;
 import com.deepexi.tarimdb.util.Status;
+import com.deepexi.tarimdb.util.Common;
 
 import org.rocksdb.*;
 import org.rocksdb.util.SizeUnit;
@@ -99,21 +100,58 @@ public class TarimKVLocal {
         slot.batchWrite(writeOpt, batch);
     }
 
+    private void validGetParam(GetRequest request) throws TarimKVException
+    {
+        if(request.getTableID() > 0
+           && request.getChunkID() > 0 
+           && request.getKeysCount() > 0) 
+        {
+           return;
+        }
+        throw new TarimKVException(Status.PARAM_ERROR);
+    }
     /**
      */
-    public List<KeyValue> get(GetRequest request) {
-        return null;
+    public List<byte[]> get(GetRequest request) throws RocksDBException, TarimKVException
+    {
+        validGetParam(request);
+        String cfName = Integer.toString(request.getTableID());
+        Slot slot = getSlot(request.getChunkID());
+        ColumnFamilyHandle cfh = slot.getColumnFamilyHandle(cfName);
+
+        ReadOptions readOpt = new ReadOptions();
+        List<byte[]> values = slot.multiGet(readOpt, cfh, request.getKeysList());
+
+        return values;
+    }
+
+    private void validDeleteParam(DeleteRequest request) throws TarimKVException
+    {
+        if(request.getTableID() > 0
+           && request.getChunkID() > 0 
+           && request.getKey() != null && !request.getKey().isEmpty()) 
+        {
+           return;
+        }
+        throw new TarimKVException(Status.PARAM_ERROR);
+    }
+    /**
+     */
+    public void delete(DeleteRequest request) throws RocksDBException, TarimKVException
+    {
+        validDeleteParam(request);
+        String cfName = Integer.toString(request.getTableID());
+        Slot slot = getSlot(request.getChunkID());
+        ColumnFamilyHandle cfh = slot.getColumnFamilyHandle(cfName);
+
+        WriteOptions writeOpt = new WriteOptions();
+        slot.delete(writeOpt, cfh, request.getKey());
     }
 
     /**
      */
     public List<KeyValue> prefixSeek(PrefixSeekRequest request) {
         return null;
-    }
-
-    /**
-     */
-    public void delete(DeleteRequest request) {
     }
 
     /*------ chunk scan (only local) ------*/

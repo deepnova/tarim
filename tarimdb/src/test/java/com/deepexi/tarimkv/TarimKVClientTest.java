@@ -69,7 +69,6 @@ class TarimKVClientTest {
     void testPut(){
 
         doNothing().doThrow(new RuntimeException()).when(metaClient).refreshDistribution();
-        //TarimKVProto.DistributionInfo.Builder distInfoBuilder = TarimKVProto.DistributionInfo.newBuilder();
         when(metaClient.getDistribution()).thenReturn(TarimKVProto.DistributionInfo.newBuilder().build());
         when(metaClient.getMasterReplicaSlot(1)).thenReturn("sl-1");
         
@@ -92,9 +91,6 @@ class TarimKVClientTest {
             putReqBuilder.addValues(kvBuilder);
         }
 
-        logger.debug("-----debug log: testPut");
-        logger.info("-----info log: testPut");
-
         try{
             kvClient.init();
             kvClient.put(putReqBuilder.build());
@@ -107,6 +103,11 @@ class TarimKVClientTest {
             e.printStackTrace();
             Assertions.assertFalse(true);
         }
+    }
+
+    @Test
+    void testGet(){
+            
     }
 }
 

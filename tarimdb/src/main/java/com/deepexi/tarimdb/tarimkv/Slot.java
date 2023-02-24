@@ -17,6 +17,7 @@ import org.rocksdb.util.SizeUnit;
 
 import com.deepexi.tarimdb.util.Status;
 import com.deepexi.tarimdb.util.TarimKVException;
+import com.deepexi.tarimdb.util.Common;
 
 /**
  * SlotManager
@@ -75,8 +76,10 @@ public class Slot {
         return slotConfig.getId();
     }
 
-    public void createColumnFamilyIfNotExist(String cfName) throws RocksDBException {
-        if(mapColumnFamilyHandles.containsKey(cfName)){
+    public void createColumnFamilyIfNotExist(String cfName) throws RocksDBException 
+    {
+        if(mapColumnFamilyHandles.containsKey(cfName))
+        {
             logger.debug("column family: " + cfName + " exist.");
             return;
         }
@@ -90,9 +93,11 @@ public class Slot {
         mapColumnFamilyHandles.put(cfName, cfHandle);
     }
 
-    private String mapColumnFamilyHandlestoString(String key) throws RocksDBException {
+    private String mapColumnFamilyHandlestoString(String key) throws RocksDBException 
+    {
         StringBuilder sb = new StringBuilder();
-        for (Map.Entry<String, ColumnFamilyHandle> entry : mapColumnFamilyHandles.entrySet()) {
+        for (Map.Entry<String, ColumnFamilyHandle> entry : mapColumnFamilyHandles.entrySet()) 
+        {
             ColumnFamilyHandle cfh = entry.getValue();
             sb.append("{key=");             sb.append(entry.getKey());
             sb.append(",{value=[name:");    sb.append(new String(cfh.getName()));
@@ -103,20 +108,45 @@ public class Slot {
         return sb.toString();
     }
 
-    public ColumnFamilyHandle getColumnFamilyHandle(final String cfName) throws RocksDBException, TarimKVException {
+    public ColumnFamilyHandle getColumnFamilyHandle(final String cfName) throws RocksDBException, TarimKVException 
+    {
         // TODO: WriteBatch and Iterator need lock ?
         ColumnFamilyHandle cfHandle = mapColumnFamilyHandles.get(cfName);
         logger.info("CF handles: " + mapColumnFamilyHandlestoString(cfName));
-        if(cfHandle == null){
+        if(cfHandle == null)
+        {
             logger.error("not found ColumnFamilyHandle of column family: " + cfName);
             throw new TarimKVException(Status.NULL_POINTER);
         }
         return cfHandle;
     }
 
-    public void batchWrite(final WriteOptions writeOpts, final WriteBatch updates) throws RocksDBException{
+    public void batchWrite(final WriteOptions writeOpts, final WriteBatch updates) throws RocksDBException
+    {
         db.write(writeOpts, updates);
     }
 
+    public List<byte[]> multiGet(final ReadOptions readOpts, ColumnFamilyHandle cfHandle, List<String> keys) throws RocksDBException
+    {
+        List<ColumnFamilyHandle> cfhList = new ArrayList<>();
+        List<byte[]> keyList = Common.stringListToBytesList(keys);
+        for(int i = 0; i < keys.size(); i++){
+            cfhList.add(cfHandle); // ColumnFamilyHandle for every key
+        }
+
+        List<byte[]> values = db.multiGetAsList(readOpts, cfhList, keyList);
+        logger.info("multiGet(), ColumnFamily name: " + new String(cfHandle.getName())
+                  + ", slot id: " + getSlotID()
+                  + ", key size: " + keyList.size()
+                  + ", value size: " + values.size());
+        return values;
+    }
+
+    public void delete(final WriteOptions writeOpts, ColumnFamilyHandle cfHandle, String key) throws RocksDBException
+    {
+        logger.info("delete(), ColumnFamily name: " + new String(cfHandle.getName())
+                  + ", slot id: " + getSlotID() + ", key: " + key);
+        db.delete(cfHandle, writeOpts, key.getBytes());
+    }
 }
 

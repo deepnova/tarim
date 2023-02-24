@@ -1,13 +1,13 @@
 package com.deepexi.tarimdb.tarimkv;
 
 import java.util.List;
-import java.util.Iterator;
 import java.lang.StringBuilder;
 import com.deepexi.rpc.TarimKVProto;
 import com.deepexi.rpc.TarimKVProto.DataDistributionRequest;
 import com.deepexi.rpc.TarimKVProto.DataDistributionResponse;
 import com.deepexi.rpc.TarimKVProto.DistributionInfo;
 import com.deepexi.rpc.TarimKVProto.StatusResponse;
+import com.deepexi.tarimdb.util.Common;
 
 public class KVMetadata {
 
@@ -22,21 +22,12 @@ public class KVMetadata {
 
     private DistributionInfo dataDist;
 
-    public static<T> Iterable<T> iteratorToIterable(Iterator<T> iterator)
-    {
-        return new Iterable<T>() {
-            @Override
-            public Iterator<T> iterator() {
-                return iterator;
-            }
-        };
-    }
 
     public DistributionInfo toDistributionInfo(boolean rebuild){
         if(dataDist == null || rebuild == true){
             DistributionInfo.Builder distBuilder = DistributionInfo.newBuilder();
-            distBuilder.addAllRgroups(iteratorToIterable(rgroups.iterator()));
-            distBuilder.addAllDnodes(iteratorToIterable(dnodes.iterator()));
+            distBuilder.addAllRgroups(Common.iteratorToIterable(rgroups.iterator()));
+            distBuilder.addAllDnodes(Common.iteratorToIterable(dnodes.iterator()));
             dataDist = distBuilder.build();
         }
         return dataDist;

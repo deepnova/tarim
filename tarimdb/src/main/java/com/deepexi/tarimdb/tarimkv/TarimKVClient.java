@@ -2,6 +2,7 @@ package com.deepexi.tarimdb.tarimkv;
 
 import java.util.Map;
 import java.util.HashMap;
+import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -56,11 +57,21 @@ public class TarimKVClient {
     public void put(PutRequest request) throws TarimKVException {
         //TODO: write local or remote rocksdb here if necessary
         //TODO: check if distribution is correct. 
-        logger.debug("----- into put -----");
         try{
             kvLocal.put(request);
         } catch (RocksDBException e){
-            logger.error("rocksdb exception: %s\n", e);
+            logger.error("rocksdb exception: %s\n", e.getMessage());
+            throw new TarimKVException(Status.ROCKSDB_ERROR);
+        }
+    }
+    public List<byte[]> get(GetRequest request) throws TarimKVException {
+        //TODO: write local or remote rocksdb here if necessary
+        //TODO: check if distribution is correct. 
+        try{
+            return kvLocal.get(request);
+        } catch (RocksDBException e){
+            logger.error("rocksdb exception: %s\n", e.getMessage());
+            e.printStackTrace();
             throw new TarimKVException(Status.ROCKSDB_ERROR);
         }
     }
