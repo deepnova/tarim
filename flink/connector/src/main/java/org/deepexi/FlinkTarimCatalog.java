@@ -35,7 +35,7 @@ public class FlinkTarimCatalog extends AbstractCatalog {
     private final SupportsNamespaces asNamespaceCatalog;
     private final Closeable closeable;
 
-    FlinkTarimCatalog(String catalogName, String defaultDatabase, Namespace baseNamespace){
+    public FlinkTarimCatalog(String catalogName, String defaultDatabase, Namespace baseNamespace){
         super(catalogName, defaultDatabase);
         this.baseNamespace = baseNamespace;
         tarimCatalog = new ConnectorTarimCatalog(catalogName);
@@ -140,6 +140,7 @@ public class FlinkTarimCatalog extends AbstractCatalog {
     static CatalogTable toCatalogTable(Table table, Map<String, String> properties) {
 
         //new a fix schema for test
+        /*
         TypeInformation<?>[] types = new TypeInformation[]{
                 STRING_TYPE_INFO,
                 INT_TYPE_INFO,
@@ -150,6 +151,17 @@ public class FlinkTarimCatalog extends AbstractCatalog {
            "currency",
            "userid",
            "test1"
+        };
+        */
+
+        TypeInformation<?>[] types = new TypeInformation[]{
+                INT_TYPE_INFO,
+                INT_TYPE_INFO,
+        };
+
+        String[] names = new String[]{
+                "test1",
+                "userid",
         };
 
         TableSchema schema = new TableSchema(names, types);

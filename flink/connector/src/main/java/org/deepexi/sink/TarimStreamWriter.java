@@ -6,17 +6,21 @@ import org.apache.flink.streaming.api.operators.ChainingStrategy;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 
+import org.apache.flink.table.data.RowData;
 import org.apache.iceberg.Table;
 
 import org.apache.iceberg.relocated.com.google.common.base.MoreObjects;
 import org.deepexi.TarimDbAdapt;
+import org.deepexi.WResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
-public class TarimStreamWriter<T> extends AbstractStreamOperator<Long>
-        implements OneInputStreamOperator<T, Long>, BoundedOneInput {
+public class TarimStreamWriter<T> extends AbstractStreamOperator<WResult>
+        implements OneInputStreamOperator<T, WResult>, BoundedOneInput {
     private static final Logger LOG = LoggerFactory.getLogger(TarimStreamWriter.class);
     private static final long serialVersionUID = 1L;
 
@@ -27,6 +31,11 @@ public class TarimStreamWriter<T> extends AbstractStreamOperator<Long>
 
     private transient Table table;
     private TarimDbAdapt dbAdapter;
+    public List<String> dataList = new ArrayList<>();
+    public List<String> completeList = new ArrayList<>();
+    public int batchNum = 10;
+    public int dataIndex = 0;
+
     TarimStreamWriter(String fullTableName, Table table) {
         this.fullTableName = fullTableName;
         this.table = table;
@@ -51,8 +60,20 @@ public class TarimStreamWriter<T> extends AbstractStreamOperator<Long>
 
     @Override
     public void processElement(StreamRecord<T> element) throws Exception {
+        LOG.info("stream-processElement" + element.getValue().toString());
         //writer.write(element.getValue());
-        dbAdapter.writeData(element);
+        if (element != null){
+            dataList.add(element.getValue().toString());
+            dataIndex++;
+
+            if (dataIndex >= batchNum){
+                dbAdapter.writeData(dataList);
+                completeList.addAll(dataList);
+                dataList.clear();
+                dataIndex = 0;
+            }
+        }
+
     }
 
     @Override
@@ -77,7 +98,19 @@ public class TarimStreamWriter<T> extends AbstractStreamOperator<Long>
     }
 
     private void flush() throws IOException {
+        LOG.info("stream-flush...");
 
-        output.collect(dbAdapter.complete());
+        if (dataList.size() > 0){
+            completeList.addAll(dataList);
+            dbAdapter.writeData(dataList);
+            dataList.clear();
+
+            dataIndex = 0;
+        }else{
+            LOG.info("the list is empty");
+        }
+        WResult wr = new WResult(completeList);
+        StreamRecord<WResult> streamRecord =new StreamRecord<>(wr);
+        output.collect(streamRecord);
     }
 }

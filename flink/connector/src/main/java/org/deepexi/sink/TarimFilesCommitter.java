@@ -1,5 +1,6 @@
 package org.deepexi.sink;
 
+import org.apache.commons.lang.SerializationUtils;
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
@@ -10,26 +11,30 @@ import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.BoundedOneInput;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
+import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.runtime.typeutils.SortedMapTypeInfo;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.Table;
+import org.apache.iceberg.io.WriteResult;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.base.Strings;
+import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.types.Comparators;
 import org.apache.iceberg.types.Types;
+import org.apache.iceberg.util.SerializationUtil;
 import org.deepexi.TarimDbAdapt;
+import org.deepexi.WResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Comparator;
-import java.util.Map;
-import java.util.NavigableMap;
-import java.util.SortedMap;
+import java.util.*;
+
+import static com.sun.org.apache.xml.internal.serialize.OutputFormat.Defaults.Encoding;
 
 
 class TarimFilesCommitter extends AbstractStreamOperator<Void>
-        implements OneInputStreamOperator<Long, Void>, BoundedOneInput {
+        implements OneInputStreamOperator<WResult, Void>, BoundedOneInput {
 
     private Table table;
     private static TarimDbAdapt dbAdapter;
@@ -54,6 +59,10 @@ class TarimFilesCommitter extends AbstractStreamOperator<Void>
     // All pending checkpoints states for this function.
     private static final ListStateDescriptor<SortedMap<Long, byte[]>> STATE_DESCRIPTOR = buildStateDescriptor();
     private transient ListState<SortedMap<Long, byte[]>> checkpointsState;
+
+    private final NavigableMap<Long, byte[]> dataListPerCheckpoint = Maps.newTreeMap();
+
+    private final List<WResult> resultsOfCurrentCkpt = Lists.newArrayList();
     TarimFilesCommitter(Table table) {
         this.table = table;
     }
@@ -69,6 +78,17 @@ class TarimFilesCommitter extends AbstractStreamOperator<Void>
     public void endInput() throws Exception {
         //todo
         Long checkpointId = Long.MAX_VALUE;
+        StringBuffer sb = new StringBuffer();
+        for ( WResult wr :resultsOfCurrentCkpt){
+            for (String str : wr.strList){
+                sb.append(str);
+            }
+        }
+        String tmp = sb.toString();
+        LOG.info("filescommit-endInput" + tmp);
+        dataListPerCheckpoint.put(checkpointId, sb.toString().getBytes());
+
+        resultsOfCurrentCkpt.clear();
         dbAdapter.endData();
         dbAdapter.doCheckponit(checkpointId);
 
@@ -76,8 +96,9 @@ class TarimFilesCommitter extends AbstractStreamOperator<Void>
     }
 
     @Override
-    public void processElement(StreamRecord<Long> streamRecord) throws Exception {
+    public void processElement(StreamRecord<WResult> streamRecord) throws Exception {
         //todo , do nothing?? needn't cache data for tarimDB here
+        this.resultsOfCurrentCkpt.add(streamRecord.getValue());
         return;
     }
 
@@ -86,10 +107,27 @@ class TarimFilesCommitter extends AbstractStreamOperator<Void>
         //todo
         super.snapshotState(context);
         long checkpointId = context.getCheckpointId();
+
+        StringBuffer sb = new StringBuffer();
+        for ( WResult wr :resultsOfCurrentCkpt){
+            for (String str : wr.strList){
+                sb.append(str);
+            }
+        }
+
+        String tmp = sb.toString();
+        LOG.info("filescommit-snapshotState-oldstr:"+ tmp);
+        LOG.info("filescommit-snapshotState-tobytes:" + tmp.getBytes());
+
+        dataListPerCheckpoint.put(checkpointId, sb.toString().getBytes());
+        String tmpNew = new String(tmp.getBytes());
+        LOG.info("filescommit-snapshotState-newstr:" + tmpNew);
         checkpointsState.clear();
-        //checkpointsState.add();
+        checkpointsState.add(dataListPerCheckpoint);
         jobIdState.clear();
         jobIdState.add(flinkJobId);
+
+        resultsOfCurrentCkpt.clear();
         return;
     }
     @Override
@@ -152,9 +190,10 @@ class TarimFilesCommitter extends AbstractStreamOperator<Void>
         Snapshot snapshot = table.currentSnapshot();
         long lastCommittedCheckpointId = INITIAL_CHECKPOINT_ID;
 
-        //todo, get the lastCommittedCheckpointId
+        //todo, get the lastCommittedCheckpointId from TarimDB,or connector get it directly
 
         lastCommittedCheckpointId = dbAdapter.getLastommittedCheckpointId();
+        /*
         while (snapshot != null) {
             Map<String, String> summary = snapshot.summary();
             String snapshotFlinkJobId = summary.get(FLINK_JOB_ID);
@@ -168,7 +207,7 @@ class TarimFilesCommitter extends AbstractStreamOperator<Void>
             Long parentSnapshotId = snapshot.parentId();
             snapshot = parentSnapshotId != null ? table.snapshot(parentSnapshotId) : null;
         }
-
+        */
         return lastCommittedCheckpointId;
     }
 }

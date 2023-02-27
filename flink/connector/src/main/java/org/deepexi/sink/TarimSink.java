@@ -19,6 +19,7 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
 import org.apache.iceberg.types.TypeUtil;
 
+import org.deepexi.WResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,7 +83,7 @@ public class TarimSink{
                     rowDataInput, table.properties(), null, null, null);
 
             // Add parallel writers that append rows to files
-            SingleOutputStreamOperator<Long> writerStream = appendWriter(distributeStream, null);
+            SingleOutputStreamOperator<WResult> writerStream = appendWriter(distributeStream, null);
 
             // Add single-parallelism committer that commits files
             // after successful checkpoint or end of input
@@ -201,7 +202,7 @@ public class TarimSink{
                     throw new RuntimeException("Unrecognized write.distribution-mode: " + writeMode);
             }
         }
-        private SingleOutputStreamOperator<Long> appendWriter(DataStream<RowData> input,
+        private SingleOutputStreamOperator<WResult> appendWriter(DataStream<RowData> input,
                                                                      RowType flinkRowType) {
             // Find out the equality field id list based on the user-provided equality field column names.
             List<Integer> equalityFieldIds = Lists.newArrayList();
@@ -216,8 +217,8 @@ public class TarimSink{
 
             int parallelism = writeParallelism == null ? input.getParallelism() : writeParallelism;
             TarimStreamWriter<RowData> streamWriter = createStreamWriter(table, parallelism);
-            SingleOutputStreamOperator<Long> writerStream = input
-                    .transform(operatorName(TARIM_STREAM_WRITER_NAME), TypeInformation.of(Long.class), streamWriter)
+            SingleOutputStreamOperator<WResult> writerStream = input
+                    .transform(operatorName(TARIM_STREAM_WRITER_NAME), TypeInformation.of(WResult.class), streamWriter)
                     .setParallelism(parallelism);
             if (uidPrefix != null) {
                 writerStream = writerStream.uid(uidPrefix + "-writer");
@@ -246,7 +247,7 @@ public class TarimSink{
             return resultStream;
         }
 
-        private SingleOutputStreamOperator<Void> appendCommitter(SingleOutputStreamOperator<Long> writerStream) {
+        private SingleOutputStreamOperator<Void> appendCommitter(SingleOutputStreamOperator<WResult> writerStream) {
             TarimFilesCommitter filesCommitter = new TarimFilesCommitter(table);
             SingleOutputStreamOperator<Void> committerStream = writerStream
                     .transform(operatorName(TARIM_FILES_COMMITTER_NAME), Types.VOID, filesCommitter)

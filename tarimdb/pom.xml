@@ -30,11 +30,6 @@
             <scope>test</scope>
         </dependency>
 
-        <dependency>
-            <groupId>org.rocksdb</groupId>
-            <artifactId>rocksdbjni</artifactId>
-            <version>7.9.2-1</version>
-        </dependency>
 
         <dependency>
             <groupId>commons-cli</groupId>

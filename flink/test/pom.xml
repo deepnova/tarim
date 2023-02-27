@@ -111,7 +111,7 @@
             <scope>system</scope>
             <!--            <systemPath>D:/JavaCode/iceberg-apache-iceberg-0.12.0/flink-runtime/build/libs/iceberg-flink-runtime-0.18.0.jar</systemPath>-->
             <systemPath>
-                /usr/local/wpf/iceberg-flink-runtime-1.14-0.13.1.jar
+                /home/wpf/iceberg/flink/v1.14/flink-runtime/build/libs/iceberg-flink-runtime-1.14-0.13.1.jar
             </systemPath>
             <!--            <systemPath>D:/JavaCode/icebergtest/flink/v1.13/flink-runtime/build/libs/iceberg-flink-1.13-runtime-0.13.0-SNAPSHOT.jar</systemPath>-->
         </dependency>
@@ -124,7 +124,7 @@
             <scope>system</scope>
             <!--            <systemPath>D:/JavaCode/iceberg-apache-iceberg-0.12.0/flink-runtime/build/libs/iceberg-flink-runtime-0.18.0.jar</systemPath>-->
             <systemPath>
-                /usr/local/wpf/tarim/connector/target/connector-1.0-SNAPSHOT.jar
+                /usr/local/wpf/code/wpf_tarim/flink/connector/target/connector-1.0-SNAPSHOT.jar
             </systemPath>
             <!--            <systemPath>D:/JavaCode/icebergtest/flink/v1.13/flink-runtime/build/libs/iceberg-flink-1.13-runtime-0.13.0-SNAPSHOT.jar</systemPath>-->
         </dependency>
