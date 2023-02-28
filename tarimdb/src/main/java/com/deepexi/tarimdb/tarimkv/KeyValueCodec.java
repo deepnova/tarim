@@ -1,5 +1,6 @@
 package com.deepexi.tarimdb.tarimkv;
 
+import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -11,7 +12,8 @@ import com.deepexi.tarimdb.util.TarimKVException;
  * KeyValueCodec 
  *  
  */
-public class KeyValueCodec {
+public class KeyValueCodec 
+{
     private final static Logger logger = LogManager.getLogger(KeyValueCodec.class);
 
     private static String KEY_SEPARATOR = "_";
@@ -21,15 +23,18 @@ public class KeyValueCodec {
 
     public KeyValueCodec(){ }
 
-    public KeyValueCodec(int chunkID, TarimKVProto.KeyValue value){
+    public KeyValueCodec(int chunkID, TarimKVProto.KeyValue value)
+    {
         this.chunkID = chunkID;
         this.value = value;
         logger.debug("KeyValueCodec(), chunkID: " + this.chunkID 
                   + ", key: " + this.value.getKey()
                   + ", encodeVersion: " + this.value.getEncodeVersion());
     }
+
     // Key固定编码：{chunkID}{separator}{primaryKey}{separator}{encodeVersion}
-    public static String KeyEncode(KeyValueCodec kv) {
+    public static String KeyEncode(KeyValueCodec kv) 
+    {
         String internalKey = String.format("%d%s%s%s%d"
                                           ,kv.chunkID
                                           ,KeyValueCodec.KEY_SEPARATOR
@@ -41,7 +46,23 @@ public class KeyValueCodec {
                   + ", encodeVersion: " + kv.value.getEncodeVersion() + ", internalKey: " + internalKey);
         return internalKey;
     }
-    public static KeyValueCodec KeyDecode(String internalKey) throws TarimKVException{
+
+    public static String KeyPrefixEncode(int chunkID, String prefix) 
+    {
+        String internalKey = String.format("%d%s%s%s%d"
+                                          ,chunkID
+                                          ,KeyValueCodec.KEY_SEPARATOR
+                                          ,prefix
+                                          ,KeyValueCodec.KEY_SEPARATOR);
+        logger.debug("KeyPrefixEncode(), chunkID: " + chunkID 
+                  + ", prefix: " + prefix
+                  + ", internalKey prefix: " + internalKey);
+        return internalKey;
+    }
+
+    //TODO: decode 'op' if it in key
+    public static KeyValueCodec KeyDecode(String internalKey) throws TarimKVException
+    {
         String[] result = internalKey.split(KeyValueCodec.KEY_SEPARATOR);
         if(result.length != 3) throw new TarimKVException(Status.KEY_ENCODE_ERROR);
         KeyValueCodec kvc = new KeyValueCodec();
@@ -52,11 +73,24 @@ public class KeyValueCodec {
         kvc.value = kvBuilder.build();
         return kvc;
     }
-    public static byte[] ValueEncode() {
+
+    public static void putMaxVersionKeyValue(TarimKVProto.KeyValue kvSrc, Map<String, TarimKVProto.KeyValue> mapDest)
+    {
+        //TODO: There should not be two values for a key with different encodeVersions
+        TarimKVProto.KeyValue kv = mapDest.get(kvSrc.getKey());
+        if(kv == null || kvSrc.getEncodeVersion() > kv.getEncodeVersion())
+        {
+            mapDest.put(kvSrc.getKey(), kvSrc);
+        }
+    }
+
+    public static byte[] ValueEncode() 
+    {
         // un-used
         return null;
     }
-    public static byte[] ValueDecode() {
+    public static byte[] ValueDecode() 
+    {
         // un-used
         return null;
     }

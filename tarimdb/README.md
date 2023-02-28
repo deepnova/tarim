@@ -10,3 +10,10 @@ mvn exec:java -Dexec.mainClass="com.deepexi.TarimServer" -Dexec.args='-m mnode -
 mvn exec:java -Dexec.mainClass="com.deepexi.TarimServer" -Dexec.args='-m dnode -f kv.yaml'
 ```
 
+### ldb
+
+```
+ldb --db=target/slot1 list_column_families
+ldb --db=target/slot1 get '1_key-1_1' --column_family=100
+
+```

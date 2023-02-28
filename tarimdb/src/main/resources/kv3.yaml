@@ -16,3 +16,8 @@ slots:
     dataPath: /data/tarim-data/tarimkv-data-test/h3/slot2
     role: 1
     status: 2
+mainAccount:
+  accountType: 1
+  username: admin
+  token: admin987
+mainPath: /tarim/maindata

@@ -14,6 +14,10 @@ public class KVLocalMetadata {
     public String address;
     public int port;
 
+    /*--- get from meta server in future ----*/
+    public KVSchema.MainAccount mainAccount;
+    public String mainPath;
+
     public TarimKVProto.Node getMasterMNode() {
         if(mnodes == null || mnodes.isEmpty()) return null;
         for(TarimKVProto.Node node : this.mnodes){
@@ -49,6 +53,11 @@ public class KVLocalMetadata {
         }
         sb.append("]");
 
+        sb.append(",mainAccount={");
+        sb.append("type=");         sb.append(this.mainAccount.accountType);
+        sb.append(",username=");    sb.append(this.mainAccount.username);
+        sb.append(",token=");       sb.append(this.mainAccount.token);
+        sb.append("},mainPath");    sb.append(this.mainPath);
         sb.append("}");
         return sb.toString();
     }

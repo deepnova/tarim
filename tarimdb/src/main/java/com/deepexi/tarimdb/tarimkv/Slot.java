@@ -13,6 +13,7 @@ import org.apache.logging.log4j.Logger;
 
 import com.deepexi.rpc.TarimKVProto;
 import org.rocksdb.*;
+//import org.rocksdb.RocksIterator;
 import org.rocksdb.util.SizeUnit;
 
 import com.deepexi.tarimdb.util.Status;
@@ -23,9 +24,10 @@ import com.deepexi.tarimdb.util.Common;
  * SlotManager
  *
  */
-public class Slot {
+public class Slot 
+{
     public final static Logger logger = LogManager.getLogger(Slot.class);
-
+    //private org.rocksdb.Status RocksStatus;
     private TarimKVProto.Slot slotConfig;
     private RocksDB db;
     //private Map<byte[], ColumnFamilyHandle> mapColumnFamilyHandles;
@@ -121,12 +123,12 @@ public class Slot {
         return cfHandle;
     }
 
-    public void batchWrite(final WriteOptions writeOpts, final WriteBatch updates) throws RocksDBException
+    public void batchWrite(WriteOptions writeOpts, final WriteBatch updates) throws RocksDBException
     {
         db.write(writeOpts, updates);
     }
 
-    public List<byte[]> multiGet(final ReadOptions readOpts, ColumnFamilyHandle cfHandle, List<String> keys) throws RocksDBException
+    public List<byte[]> multiGet(ReadOptions readOpts, ColumnFamilyHandle cfHandle, List<String> keys) throws RocksDBException
     {
         List<ColumnFamilyHandle> cfhList = new ArrayList<>();
         List<byte[]> keyList = Common.stringListToBytesList(keys);
@@ -142,11 +144,58 @@ public class Slot {
         return values;
     }
 
-    public void delete(final WriteOptions writeOpts, ColumnFamilyHandle cfHandle, String key) throws RocksDBException
+    public void delete(WriteOptions writeOpts, ColumnFamilyHandle cfHandle, String key) throws RocksDBException
     {
         logger.info("delete(), ColumnFamily name: " + new String(cfHandle.getName())
                   + ", slot id: " + getSlotID() + ", key: " + key);
         db.delete(cfHandle, writeOpts, key.getBytes());
+    }
+
+    public List<TarimKVProto.KeyValue> prefixSeek(ReadOptions readOpts, ColumnFamilyHandle cfHandle, String keyPrefix) throws RocksDBException, TarimKVException
+    {
+        readOpts.setAutoPrefixMode(true);
+        RocksIterator iter = db.newIterator(cfHandle, readOpts);
+        iter.seek(keyPrefix.getBytes());
+
+        //Map<String, KeyValue> tempResults = new HashMap<>();
+        List<TarimKVProto.KeyValue> results = new ArrayList();
+
+        for (iter.seekToFirst(); iter.isValid(); iter.next()) 
+        {
+            iter.status();
+            if(iter.key() == null || iter.value() == null)
+            {
+                logger.error("prefixSeek(), iterator seek error, key or value is null, key: " + iter.key()
+                           + ", value: " + iter.value()
+                           + ", key prefix: " + keyPrefix);
+                continue; // TODO: throw exception if necessary in futrue.
+            }
+            KeyValueCodec kvc = KeyValueCodec.KeyDecode(new String(iter.value()));
+            logger.debug("prefixSeek(), result internal key: " + iter.key() 
+                        + ", value: " + iter.value()
+                        + ", chunkID: " + kvc.chunkID
+                        + ", key: " + kvc.value.getKey()
+                        + ", value: " + kvc.value.getValue()
+                        + ", cfName: " + cfHandle.getName()
+                        + ", key prefix: " + keyPrefix);
+            //KeyValueCodec.putMaxVersionKeyValue(kvc.value(), mapDest);
+            results.add(kvc.value);
+        }
+        //if(tempResults.size() <= 0) return null; 
+        //else return new ArrayList<>(tempResults.values());
+        return results;
+    }
+
+    public long prepareScan(ColumnFamilyHandle cfHandle) 
+    {
+        // TODO: rocksjni not expose 'TransactionDB::GetLatestTimestampedSnapshot()', ignore snapshot in the prototype.
+        return 0;
+    }
+
+    public void releaseSnapshot(long snapshotID) 
+    {
+        //TODO:
+        return ; // do nothing in the prototype
     }
 }
 

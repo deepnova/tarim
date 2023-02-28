@@ -32,13 +32,13 @@ public class KVSchema {
     }
 
     static class PrepareScanInfo {
-        public int snapshotID;
         public List<ChunkDetail> chunkDetails;
         public MainAccount mainAccount;
     }
 
     static class ChunkDetail {
         public long chunkID;
+        public long snapshotID; // for one slot
         // 0：none_merge
         // 1：client_merge
         // 2：server_merge
@@ -58,11 +58,11 @@ public class KVSchema {
         // 1：delta-only
         // 2: full
         public int scope; 
-        public String tableID;
+        public int tableID;
         public int snapshotID;
         public long chunkID;
-        public String lastKey;
-        public int scanSize;
+        //public String lastKey; //TODO: for full in future
+        //public int scanSize;
     }
 
     static class PrefixScanParam {

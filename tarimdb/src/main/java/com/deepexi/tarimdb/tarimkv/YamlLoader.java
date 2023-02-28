@@ -139,6 +139,13 @@ public class YamlLoader {
             metadata.slots.add(slotBuiler.build());
         }
 
+        Map<String,Object> account = (Map<String,Object>) obj.get("mainAccount");
+        metadata.mainAccount.accountType  = Integer.valueOf(account.get("accountType").toString());
+        metadata.mainAccount.username = account.get("username").toString();
+        metadata.mainAccount.token = account.get("token").toString();
+
+        metadata.mainPath = account.get("mainPath").toString();
+
         logger.debug("local metadata: " + metadata.toString());
 
         return Status.OK;

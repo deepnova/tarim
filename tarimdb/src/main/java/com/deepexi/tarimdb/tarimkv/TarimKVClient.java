@@ -75,5 +75,30 @@ public class TarimKVClient {
             throw new TarimKVException(Status.ROCKSDB_ERROR);
         }
     }
+
+    public void delete(DeleteRequest request) throws TarimKVException 
+    {
+        //TODO: write local or remote rocksdb here if necessary
+        //TODO: check if distribution is correct. 
+        try{
+            kvLocal.delete(request);
+        } catch (RocksDBException e){
+            logger.error("rocksdb exception: %s\n", e.getMessage());
+            e.printStackTrace();
+            throw new TarimKVException(Status.ROCKSDB_ERROR);
+        }
+    }
+    
+    public List<KeyValue> prefixSeek(PrefixSeekRequest request) throws TarimKVException {
+        //TODO: write local or remote rocksdb here if necessary
+        //TODO: check if distribution is correct. 
+        try{
+            return kvLocal.prefixSeek(request);
+        } catch (RocksDBException e){
+            logger.error("rocksdb exception: %s\n", e.getMessage());
+            e.printStackTrace();
+            throw new TarimKVException(Status.ROCKSDB_ERROR);
+        }
+    }
 }
 

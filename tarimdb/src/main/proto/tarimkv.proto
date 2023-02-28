@@ -103,7 +103,8 @@ message GetReponse {
 message PrefixSeekRequest {
     int32 tableID = 1;
     int32 chunkID = 2;
-    int32 scanSize = 3;
+    string prefix = 3;
+    //int32 scanSize = 4; // 0: unlimited
     //int32 snapshotID; // unspported, Temp: get all one-time
     //string lastKey;   // unspported, Temp: get all one-time
 }

@@ -44,7 +44,7 @@ public class TarimKVLocal {
         slotManager.init(lMetadata.slots);
     }
 
-    private Slot getSlot(int chunkID) throws TarimKVException {
+    private Slot getSlot(long chunkID) throws TarimKVException {
         boolean refreshed = false;
         String slotID;
         do{
@@ -148,25 +148,99 @@ public class TarimKVLocal {
         slot.delete(writeOpt, cfh, request.getKey());
     }
 
+    private void validPrefixSeekParam(PrefixSeekRequest request) throws TarimKVException
+    {
+        if(request.getTableID() > 0
+           && request.getChunkID() > 0 
+           //&& request.getScanSize() >= 0 
+           && request.getPrefix() != null && !request.getPrefix().isEmpty()) 
+        {
+           return;
+        }
+        throw new TarimKVException(Status.PARAM_ERROR);
+    }
+
     /**
+     * only supported prefix seeks in a chunk, and return all result one time.
      */
-    public List<KeyValue> prefixSeek(PrefixSeekRequest request) {
-        return null;
+    public List<TarimKVProto.KeyValue> prefixSeek(PrefixSeekRequest request) 
+            throws RocksDBException, TarimKVException
+    {
+        validPrefixSeekParam(request);
+        String cfName = Integer.toString(request.getTableID());
+        Slot slot = getSlot(request.getChunkID());
+        ColumnFamilyHandle cfh = slot.getColumnFamilyHandle(cfName);
+
+        String keyPrefix = KeyValueCodec.KeyPrefixEncode(request.getChunkID(), request.getPrefix());
+        ReadOptions readOpt = new ReadOptions();
+        List<TarimKVProto.KeyValue> values = slot.prefixSeek(readOpt, cfh, keyPrefix);
+        logger.info("prefixSeek(), chunkID: " + request.getChunkID()
+                  + ", key prefix: " + keyPrefix
+                  + ", result size: " + values.size());
+        return values;
     }
 
     /*------ chunk scan (only local) ------*/
      
-    public KVSchema.PrepareScanInfo prepareChunkScan(String tableID, long[] chunks){
+    public KVSchema.PrepareScanInfo prepareChunkScan(int tableID, long[] chunks) throws TarimKVException, RocksDBException
+    {
         // Note: need keeping the snapshot before complete scan (snapshot counter?).
-        return null;
+        if(tableID <= 0 || chunks.length <= 0)
+        {
+            throw new TarimKVException(Status.PARAM_ERROR);
+        }
+        KVSchema.PrepareScanInfo scanInfo = new KVSchema.PrepareScanInfo();
+        String cfName = Integer.toString(tableID);
+        for(int i = 0; i < chunks.length; i++)
+        {
+            Slot slot = getSlot(chunks[i]);
+            ColumnFamilyHandle cfh = slot.getColumnFamilyHandle(cfName);
+            KVSchema.ChunkDetail chunkDetail = new KVSchema.ChunkDetail();
+            chunkDetail.chunkID = chunks[i];
+            // get current snapshot, and keep it in memory until scan stop
+            chunkDetail.snapshotID = slot.prepareScan(cfh);
+            chunkDetail.mergePolicy = 1;
+            chunkDetail.mainPath = lMetadata.mainPath; //TODO: may too long
+            //TODO: different chunks may in same slot, should return the same snapshot
+        }
+
+        scanInfo.mainAccount = lMetadata.mainAccount;
+
+        return scanInfo;
+    }
+
+    private void validDeltaChunkScanParam(KVSchema.DeltaScanParam param) throws TarimKVException
+    {
+        if( (param.scope == 1 || param.scope == 2)
+           && param.tableID > 0 
+           && param.snapshotID >= 0 // TODO
+           && param.chunkID > 0 
+           /*&& param.scanSize > 0*/)
+        {
+           return;
+        }
+        throw new TarimKVException(Status.PARAM_ERROR);
     }
 
     // ifComplete is output parameter, scan not complete until ifComplete == true.
-    public List<KeyValue> deltaChunkScan(KVSchema.DeltaScanParam param, boolean ifComplete){ 
+    public List<TarimKVProto.KeyValue> deltaChunkScan(KVSchema.DeltaScanParam param, boolean ifComplete)
+            throws RocksDBException, TarimKVException
+    {
+        validDeltaChunkScanParam(param);
+        String cfName = Integer.toString(param.tableID);
+        Slot slot = getSlot(param.chunkID);
+        ColumnFamilyHandle cfh = slot.getColumnFamilyHandle(cfName);
+
+        // lastKey
+        // scanSize
+
         return null;
     }
 
     // stop scan even ifComplete == false
-    public void closeChunkScan(int snapshotID){
+    public void closeChunkScan(int tableID, int snapshotID, long[] chunks)
+    {
+        // do nothing in the prototype
+        //slot.releaseSnapshot(long snapshotID) 
     }
 }

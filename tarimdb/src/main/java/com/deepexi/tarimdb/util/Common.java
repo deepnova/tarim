@@ -16,12 +16,15 @@ public class Common {
         };
     }
 
-    public static List<byte[]> stringListToBytesList(List<String> strList){
+    public static List<byte[]> stringListToBytesList(List<String> strList)
+    {
         List<byte[]> bytesList = new ArrayList<>();
-        for(String str : strList){
+        for(String str : strList)
+        {
             bytesList.add(str.getBytes());
         }
         return bytesList;
     }
+
 }
 
