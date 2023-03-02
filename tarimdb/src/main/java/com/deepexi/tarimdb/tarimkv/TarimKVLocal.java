@@ -184,6 +184,7 @@ public class TarimKVLocal {
      
     public KVSchema.PrepareScanInfo prepareChunkScan(int tableID, long[] chunks) throws TarimKVException, RocksDBException
     {
+        //TODO: open iterator instead of snapshotID and return iterator handler, maybe better
         // Note: need keeping the snapshot before complete scan (snapshot counter?).
         if(tableID <= 0 || chunks.length <= 0)
         {
@@ -198,7 +199,7 @@ public class TarimKVLocal {
             KVSchema.ChunkDetail chunkDetail = new KVSchema.ChunkDetail();
             chunkDetail.chunkID = chunks[i];
             // get current snapshot, and keep it in memory until scan stop
-            chunkDetail.snapshotID = slot.prepareScan(cfh);
+            chunkDetail.scanHandler = slot.prepareScan(cfh);
             chunkDetail.mergePolicy = 1;
             chunkDetail.mainPath = lMetadata.mainPath; //TODO: may too long
             //TODO: different chunks may in same slot, should return the same snapshot
@@ -213,7 +214,7 @@ public class TarimKVLocal {
     {
         if( (param.scope == 1 || param.scope == 2)
            && param.tableID > 0 
-           && param.snapshotID >= 0 // TODO
+           && param.scanHandler >= 0 // TODO
            && param.chunkID > 0 
            /*&& param.scanSize > 0*/)
         {
@@ -223,24 +224,28 @@ public class TarimKVLocal {
     }
 
     // ifComplete is output parameter, scan not complete until ifComplete == true.
-    public List<TarimKVProto.KeyValue> deltaChunkScan(KVSchema.DeltaScanParam param, boolean ifComplete)
+    public List<TarimKVProto.KeyValueOp> deltaChunkScan(KVSchema.DeltaScanParam param, boolean ifComplete)
             throws RocksDBException, TarimKVException
     {
+        //TODO: support lastKey and scanSize for full scan
         validDeltaChunkScanParam(param);
         String cfName = Integer.toString(param.tableID);
         Slot slot = getSlot(param.chunkID);
         ColumnFamilyHandle cfh = slot.getColumnFamilyHandle(cfName);
-
-        // lastKey
-        // scanSize
-
-        return null;
+        String startKey = KeyValueCodec.ChunkOnlyKeyPrefixEncode(param.chunkID);
+        ReadOptions readOpts = new ReadOptions();
+        List<TarimKVProto.KeyValueOp> results = slot.deltaScan(readOpts, cfh, param.scanHandler, startKey);
+        return results;
     }
 
     // stop scan even ifComplete == false
-    public void closeChunkScan(int tableID, int snapshotID, long[] chunks)
+    public void closeChunkScan(int tableID, KVSchema.ChunkScanHandler[] scanHandlers) throws TarimKVException
     {
-        // do nothing in the prototype
-        //slot.releaseSnapshot(long snapshotID) 
+        String cfName = Integer.toString(tableID);
+        for(KVSchema.ChunkScanHandler handler : scanHandlers)
+        {
+            Slot slot = getSlot(handler.chunkID);
+            slot.releaseScanHandler(handler.scanHandler);
+        }
     }
 }

@@ -18,12 +18,13 @@ public class KeyValueCodec
 
     private static String KEY_SEPARATOR = "_";
 
-    public int chunkID;
+    public long chunkID;
     public TarimKVProto.KeyValue value;
+    public TarimKVProto.KeyValueOp valueOp;
 
     public KeyValueCodec(){ }
 
-    public KeyValueCodec(int chunkID, TarimKVProto.KeyValue value)
+    public KeyValueCodec(long chunkID, TarimKVProto.KeyValue value)
     {
         this.chunkID = chunkID;
         this.value = value;
@@ -35,7 +36,7 @@ public class KeyValueCodec
     // Key固定编码：{chunkID}{separator}{primaryKey}{separator}{encodeVersion}
     public static String KeyEncode(KeyValueCodec kv) 
     {
-        String internalKey = String.format("%d%s%s%s%d"
+        String internalKey = String.format("%ld%s%s%s%d"
                                           ,kv.chunkID
                                           ,KeyValueCodec.KEY_SEPARATOR
                                           ,kv.value.getKey()
@@ -47,9 +48,9 @@ public class KeyValueCodec
         return internalKey;
     }
 
-    public static String KeyPrefixEncode(int chunkID, String prefix) 
+    public static String KeyPrefixEncode(long chunkID, String prefix) 
     {
-        String internalKey = String.format("%d%s%s%s%d"
+        String internalKey = String.format("%ld%s%s%s%d"
                                           ,chunkID
                                           ,KeyValueCodec.KEY_SEPARATOR
                                           ,prefix
@@ -60,17 +61,45 @@ public class KeyValueCodec
         return internalKey;
     }
 
-    //TODO: decode 'op' if it in key
+    public static String ChunkOnlyKeyPrefixEncode(long chunkID) 
+    {
+        String internalKey = String.format("%ld%s"
+                                          ,chunkID
+                                          ,KeyValueCodec.KEY_SEPARATOR);
+        logger.debug("ChunkOnlyKeyPrefixEncode(), chunkID: " + chunkID 
+                  + ", internalKey prefix: " + internalKey);
+        return internalKey;
+    }
+
     public static KeyValueCodec KeyDecode(String internalKey) throws TarimKVException
     {
         String[] result = internalKey.split(KeyValueCodec.KEY_SEPARATOR);
         if(result.length != 3) throw new TarimKVException(Status.KEY_ENCODE_ERROR);
         KeyValueCodec kvc = new KeyValueCodec();
-        kvc.chunkID = Integer.parseInt(result[0]);
+        kvc.chunkID = Long.parseLong(result[0]);
         TarimKVProto.KeyValue.Builder kvBuilder = TarimKVProto.KeyValue.newBuilder();
         kvBuilder.setKey(result[1]);
         kvBuilder.setEncodeVersion(Integer.parseInt(result[2]));
         kvc.value = kvBuilder.build();
+        return kvc;
+    }
+
+    public static KeyValueCodec OpKeyDecode(String internalKey) throws TarimKVException
+    {
+        String[] result = internalKey.split(KeyValueCodec.KEY_SEPARATOR);
+        if(!(result.length == 3 || result.length == 4)) throw new TarimKVException(Status.KEY_ENCODE_ERROR);
+        KeyValueCodec kvc = new KeyValueCodec();
+        kvc.chunkID = Long.parseLong(result[0]);
+        TarimKVProto.KeyValueOp.Builder kvBuilder = TarimKVProto.KeyValueOp.newBuilder();
+        kvBuilder.setKey(result[1]);
+        kvBuilder.setEncodeVersion(Integer.parseInt(result[2]));
+        if(result.length == 4)
+        {
+            if(result[3].equals("new")) kvBuilder.setOp(1);
+            else if(result[3].equals("del")) kvBuilder.setOp(2);
+            else kvBuilder.setOp(0); //TODO: error
+        }
+        kvc.valueOp = kvBuilder.build();
         return kvc;
     }
 

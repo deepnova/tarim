@@ -19,6 +19,7 @@ import org.rocksdb.util.SizeUnit;
 import com.deepexi.tarimdb.util.Status;
 import com.deepexi.tarimdb.util.TarimKVException;
 import com.deepexi.tarimdb.util.Common;
+import com.deepexi.tarimdb.util.HandlerMap;
 
 /**
  * SlotManager
@@ -32,6 +33,8 @@ public class Slot
     private RocksDB db;
     //private Map<byte[], ColumnFamilyHandle> mapColumnFamilyHandles;
     private Map<String, ColumnFamilyHandle> mapColumnFamilyHandles;
+
+    private HandlerMap<RocksIterator> mapScanHandlers; //TODO: clear handlers which not be closed.
 
     public Slot(TarimKVProto.Slot slot){
         slotConfig = slot;
@@ -68,6 +71,8 @@ public class Slot
         for(ColumnFamilyHandle cfh : cfHandles){
              mapColumnFamilyHandles.put(new String(cfh.getName()), cfh);
         }
+
+        mapScanHandlers = new HandlerMap<>();
     }
 
     public RocksDB getDB(){
@@ -157,7 +162,6 @@ public class Slot
         RocksIterator iter = db.newIterator(cfHandle, readOpts);
         iter.seek(keyPrefix.getBytes());
 
-        //Map<String, KeyValue> tempResults = new HashMap<>();
         List<TarimKVProto.KeyValue> results = new ArrayList();
 
         for (iter.seekToFirst(); iter.isValid(); iter.next()) 
@@ -178,24 +182,70 @@ public class Slot
                         + ", value: " + kvc.value.getValue()
                         + ", cfName: " + cfHandle.getName()
                         + ", key prefix: " + keyPrefix);
-            //KeyValueCodec.putMaxVersionKeyValue(kvc.value(), mapDest);
             results.add(kvc.value);
         }
-        //if(tempResults.size() <= 0) return null; 
-        //else return new ArrayList<>(tempResults.values());
         return results;
     }
 
     public long prepareScan(ColumnFamilyHandle cfHandle) 
     {
-        // TODO: rocksjni not expose 'TransactionDB::GetLatestTimestampedSnapshot()', ignore snapshot in the prototype.
-        return 0;
+        ReadOptions scanOpts = new ReadOptions();
+        scanOpts.setTotalOrderSeek(true);
+        RocksIterator it = db.newIterator(cfHandle, scanOpts);
+        return mapScanHandlers.put(it);
     }
 
-    public void releaseSnapshot(long snapshotID) 
+    public List<TarimKVProto.KeyValueOp> deltaScan(ReadOptions readOpts, 
+                                                   ColumnFamilyHandle cfHandle, 
+                                                   long scanHandler,
+                                                   String startKey) 
+             throws RocksDBException, TarimKVException
     {
-        //TODO:
-        return ; // do nothing in the prototype
+        readOpts.setAutoPrefixMode(true);
+        readOpts.setFillCache(false);
+        readOpts.setPrefixSameAsStart(true);
+        //readOpts.setIgnoreRangeDeletions(true); //TODO: may useful
+        RocksIterator iter = mapScanHandlers.get(scanHandler);
+        if(iter == null) throw new TarimKVException(Status.NULL_POINTER);
+        iter.seek(startKey.getBytes());
+
+        List<TarimKVProto.KeyValueOp> results = new ArrayList();
+
+        //TODO: control max size
+        for (iter.seekToFirst(); iter.isValid(); iter.next()) 
+        {
+            iter.status();
+            if(iter.key() == null || iter.value() == null)
+            {
+                logger.error("deltaScan(), iterator seek error, key or value is null, key: " + iter.key()
+                           + ", value: " + iter.value()
+                           + ", start key: " + startKey);
+                continue; // TODO: throw exception if necessary in futrue.
+            }
+            KeyValueCodec kvc = KeyValueCodec.OpKeyDecode(new String(iter.value()));
+            logger.debug("deltaScan(), result internal key: " + iter.key() 
+                        + ", value: " + iter.value()
+                        + ", chunkID: " + kvc.chunkID
+                        + ", op: " + kvc.valueOp.getOp()
+                        + ", key: " + kvc.valueOp.getKey()
+                        + ", value: " + kvc.valueOp.getValue()
+                        + ", cfName: " + cfHandle.getName()
+                        + ", start key: " + startKey);
+            results.add(kvc.valueOp);
+        }
+        return results;
+    }
+
+    public void releaseScanHandler(long scanHandler) 
+    {
+        //TODO: RocksDB的Iterator在析构中释放的资源，rocksjni未提供相关接口。
+        //      由GC触发内存释放可能会比较晚，可能会存在资源释放不及时的问题(如pinned data)。
+        /*
+        RocksIterator it = mapScanHandlers.get(scanHandler);
+        do some release?
+        if(it == null) return;
+        */
+        mapScanHandlers.remove(scanHandler); 
     }
 }
 

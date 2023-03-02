@@ -38,12 +38,17 @@ public class KVSchema {
 
     static class ChunkDetail {
         public long chunkID;
-        public long snapshotID; // for one slot
+        public long scanHandler; // iterator handle
         // 0：none_merge
         // 1：client_merge
         // 2：server_merge
         public int mergePolicy; // only implement 'client_merge' policy first
         public String mainPath;
+    }
+
+    static class ChunkScanHandler{
+        public long chunkID;
+        public long scanHandler; // iterator handle
     }
     
     static class MainAccount {
@@ -59,15 +64,15 @@ public class KVSchema {
         // 2: full
         public int scope; 
         public int tableID;
-        public int snapshotID;
+        public long scanHandler;
         public long chunkID;
-        //public String lastKey; //TODO: for full in future
-        //public int scanSize;
+        public String lastKey; //TODO: for full in future
+        public int scanSize;
     }
 
     static class PrefixScanParam {
         public String tableID;
-        //public int snapshotID;
+        //public int scanHandler;
         public long chunkID;
         public String lastKey;
         public int scanSize;

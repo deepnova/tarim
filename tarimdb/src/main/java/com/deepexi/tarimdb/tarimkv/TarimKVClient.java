@@ -89,16 +89,57 @@ public class TarimKVClient {
         }
     }
     
-    public List<KeyValue> prefixSeek(PrefixSeekRequest request) throws TarimKVException {
+    public List<KeyValue> prefixSeek(PrefixSeekRequest request) throws TarimKVException 
+    {
         //TODO: write local or remote rocksdb here if necessary
         //TODO: check if distribution is correct. 
-        try{
+        try {
             return kvLocal.prefixSeek(request);
-        } catch (RocksDBException e){
+        }
+        catch (RocksDBException e)
+        {
             logger.error("rocksdb exception: %s\n", e.getMessage());
             e.printStackTrace();
             throw new TarimKVException(Status.ROCKSDB_ERROR);
         }
+    }
+
+    public KVSchema.PrepareScanInfo prepareChunkScan(int tableID, long[] chunks) throws TarimKVException
+    {
+        //TODO: write local or remote rocksdb here if necessary
+        //TODO: check if distribution is correct. 
+        try {
+            return kvLocal.prepareChunkScan(tableID, chunks);
+        }
+        catch (RocksDBException e)
+        {
+            logger.error("rocksdb exception: %s\n", e.getMessage());
+            e.printStackTrace();
+            throw new TarimKVException(Status.ROCKSDB_ERROR);
+        }
+    }
+
+    public List<TarimKVProto.KeyValueOp> deltaChunkScan(KVSchema.DeltaScanParam param, boolean ifComplete)
+              throws TarimKVException
+    {
+        //TODO: write local or remote rocksdb here if necessary
+        //TODO: check if distribution is correct. 
+        try {
+            return kvLocal.deltaChunkScan(param, ifComplete);
+        }
+        catch (RocksDBException e)
+        {
+            logger.error("rocksdb exception: %s\n", e.getMessage());
+            e.printStackTrace();
+            throw new TarimKVException(Status.ROCKSDB_ERROR);
+        }
+    }
+
+    public void closeChunkScan(int tableID, KVSchema.ChunkScanHandler[] scanHandlers) throws TarimKVException
+    {
+        //TODO: write local or remote rocksdb here if necessary
+        //TODO: check if distribution is correct. 
+        kvLocal.closeChunkScan(tableID, scanHandlers);
     }
 }
 

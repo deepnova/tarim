@@ -1,6 +1,9 @@
 package com.deepexi.tarimkv;
 
 import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Collections;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 //import org.apache.logging.log4j.Level;
@@ -106,8 +109,18 @@ class TarimKVClientTest {
     }
 
     @Test
-    void testGet(){
-            
+    void testBasic()
+    {
+        logger.info("currentTimeMillis: " + System.currentTimeMillis());
+        Map<Long, String> mapMax = new HashMap<>();
+        mapMax.put(new Long(1), new String("hello"));
+        mapMax.put(new Long(2), new String("hello2"));
+        mapMax.put(new Long(5), new String("hello5"));
+        mapMax.put(new Long(25), new String("hello25"));
+        mapMax.put(new Long(251), new String("hello251"));
+        Long maxKey = Collections.max(mapMax.keySet());
+        Long minKey = Collections.min(mapMax.keySet());
+        logger.info("map max: " + maxKey + ", min: " + minKey);
     }
 }
 
