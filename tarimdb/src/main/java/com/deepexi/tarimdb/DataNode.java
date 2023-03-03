@@ -7,8 +7,8 @@ import org.apache.logging.log4j.Logger;
 
 import com.deepexi.tarimdb.util.BasicConfig;
 import com.deepexi.tarimdb.util.Status;
-import com.deepexi.tarimdb.tarimkv.TarimKVMetaClient;
-import com.deepexi.tarimdb.tarimkv.TarimKV;
+//import com.deepexi.tarimdb.tarimkv.TarimKVMetaClient;
+import com.deepexi.tarimdb.tarimkv.TarimKVClient;
 import com.deepexi.tarimdb.tarimkv.KVLocalMetadata;
 import com.deepexi.tarimdb.tarimkv.YamlLoader;
 
@@ -21,28 +21,28 @@ import com.deepexi.tarimdb.datamodels.*;
 public class DataNode extends AbstractNode {
 
     public final static Logger logger = LogManager.getLogger(DataNode.class);
-    private TarimKV kv;
-    private KVLocalMetadata metadata;
+    private TarimKVClient kvClient;
+    private KVLocalMetadata lMetadata;
     private ArrayList<AbstractDataModel> models;
 
     public DataNode(BasicConfig conf){
         super(conf);
-        kv = new TarimKV();
-        metadata = new KVLocalMetadata();
+        lMetadata = new KVLocalMetadata();
+        kvClient = new TarimKVClient(lMetadata);
         models = new ArrayList();
     }
 
     private void loadDataModels() {
         TarimDB db = new TarimDB();
-        db.init(kv);
+        db.init(kvClient);
         models.add(db);
     }
 
     @Override
-    public Status init(){ 
+    public Status init() throws Exception { 
         logger.info("datanode init");
-        YamlLoader.loadDNodeConfig(conf_.configFile, metadata);
-        kv.init(metadata);
+        YamlLoader.loadDNodeConfig(conf_.configFile, lMetadata);
+        kvClient.init();
         loadDataModels();
         return Status.OK;
     }
@@ -53,7 +53,7 @@ public class DataNode extends AbstractNode {
 
         try{
             for(AbstractDataModel model : models) {
-                model.start();
+                model.start(); //TODO: thread pool
             }
             for(AbstractDataModel model : models) {
                 model.join();

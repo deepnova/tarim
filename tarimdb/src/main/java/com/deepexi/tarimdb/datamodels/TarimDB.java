@@ -17,7 +17,7 @@ public class TarimDB extends AbstractDataModel {
     }
 
     @Override
-    public Status init(TarimKV kv) {
+    public Status init(TarimKVClient kv) {
         super.init(kv);
         logger.info( "This is TarimDB!" );
         return Status.OK;
