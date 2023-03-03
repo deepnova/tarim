@@ -31,12 +31,30 @@ public class KVSchema {
         public int encodeVersion;
     }
 
-    static class PrepareScanInfo {
+    public static class PrepareScanInfo {
         public List<ChunkDetail> chunkDetails;
         public MainAccount mainAccount;
+
+        public String toString()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.append("{[");
+            if(chunkDetails != null)
+            {
+                for(ChunkDetail cd : chunkDetails)
+                {
+                     sb.append(cd.toString());
+                     sb.append(",");
+                }
+            }
+            sb.append("],");
+            if(mainAccount != null) sb.append(mainAccount.toString());
+            sb.append("}");
+            return sb.toString();
+        }
     }
 
-    static class ChunkDetail {
+    public static class ChunkDetail {
         public long chunkID;
         public long scanHandler; // iterator handle
         // 0：none_merge
@@ -44,22 +62,43 @@ public class KVSchema {
         // 2：server_merge
         public int mergePolicy; // only implement 'client_merge' policy first
         public String mainPath;
+
+        public String toString()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.append("{chunkID=");         sb.append(chunkID);
+            sb.append(",scanHandler=");     sb.append(scanHandler);
+            sb.append(",mergePolicy=");     sb.append(mergePolicy);
+            sb.append(",mainPath=");        sb.append(mainPath);
+            sb.append("}");
+            return sb.toString();
+        }
     }
 
-    static class ChunkScanHandler{
+    public static class ChunkScanHandler{
         public long chunkID;
         public long scanHandler; // iterator handle
     }
     
-    static class MainAccount {
+    public static class MainAccount {
         // 1：S3
         // 2：HDFS
         public int accountType;
         public String username;
         public String token;
+
+        public String toString()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.append("{accountType=");     sb.append(accountType);
+            sb.append(",username=");        sb.append(username);
+            sb.append(",token=");           sb.append(token);
+            sb.append("}");
+            return sb.toString();
+        }
     }
 
-    static class DeltaScanParam {
+    public static class DeltaScanParam {
         // 1：delta-only
         // 2: full
         public int scope; 
@@ -70,7 +109,7 @@ public class KVSchema {
         public int scanSize;
     }
 
-    static class PrefixScanParam {
+    public static class PrefixScanParam {
         public String tableID;
         //public int scanHandler;
         public long chunkID;

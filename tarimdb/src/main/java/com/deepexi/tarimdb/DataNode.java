@@ -39,7 +39,7 @@ public class DataNode extends AbstractNode {
     }
 
     @Override
-    public Status init(){ 
+    public Status init() throws Exception { 
         logger.info("datanode init");
         YamlLoader.loadDNodeConfig(conf_.configFile, lMetadata);
         kvClient.init();

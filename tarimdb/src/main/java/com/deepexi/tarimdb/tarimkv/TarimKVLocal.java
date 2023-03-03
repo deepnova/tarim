@@ -1,7 +1,9 @@
 package com.deepexi.tarimdb.tarimkv;
 
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Set;
+import java.util.Arrays;
 import com.google.protobuf.ByteString;
 import io.grpc.stub.StreamObserver;
 import org.apache.logging.log4j.LogManager;
@@ -40,16 +42,21 @@ public class TarimKVLocal {
         logger.debug("TarimKVLocal constructor, local metadata: " + lMetadata.toString());
     }
 
-    public void init(){
+    public void init() throws Exception, IllegalArgumentException, RocksDBException {
         slotManager.init(lMetadata.slots);
     }
 
     private Slot getSlot(long chunkID) throws TarimKVException {
         boolean refreshed = false;
         String slotID;
+        logger.info("lMetadata: " + lMetadata.toString());
         do{
             slotID = metaClient.getMasterReplicaSlot(chunkID);
+            logger.info("chunkID: " + chunkID + ", slotID: " + slotID);
+            if(slotID == null) throw new TarimKVException(Status.NULL_POINTER);
             KVLocalMetadata.Node node = metaClient.getReplicaNode(slotID);
+            if(node == null) throw new TarimKVException(Status.NULL_POINTER);
+            logger.info("get replica node: " + node.toString());
             if(node.host != lMetadata.address || node.port != lMetadata.port){
                 if(refreshed == true){
                     throw new TarimKVException(Status.DISTRIBUTION_ERROR);
@@ -69,6 +76,9 @@ public class TarimKVLocal {
     } 
 
     private void validPutParam(PutRequest request) throws TarimKVException{
+        logger.info("PutRequest param, tableID" + request.getTableID()
+                  + ", chunkID: " + request.getChunkID()
+                  + ", values count: " + request.getValuesCount());
         if(request.getTableID() > 0
            && request.getChunkID() > 0 
            && request.getValuesCount() > 0) {
@@ -95,7 +105,7 @@ public class TarimKVLocal {
             batch.put(cfh
                       ,key.getBytes()
                       ,kv.getValue().getBytes());
-            logger.debug("for WriteBatch, key: " + key + ", value: " + kv.getValue());
+            logger.info("for WriteBatch, key: " + key + ", value: " + kv.getValue());
         }
         slot.batchWrite(writeOpt, batch);
     }
@@ -119,8 +129,15 @@ public class TarimKVLocal {
         Slot slot = getSlot(request.getChunkID());
         ColumnFamilyHandle cfh = slot.getColumnFamilyHandle(cfName);
 
+        List<String> internalKeys = new ArrayList<>();
+        for(String key : request.getKeysList())
+        {
+            String key0 = KeyValueCodec.KeyEncode(request.getChunkID(), key);
+            internalKeys.add(key0);
+        }
+        logger.info("get(), internal keys: " + internalKeys.toString());
         ReadOptions readOpt = new ReadOptions();
-        List<byte[]> values = slot.multiGet(readOpt, cfh, request.getKeysList());
+        List<byte[]> values = slot.multiGet(readOpt, cfh, internalKeys);
 
         return values;
     }
@@ -144,8 +161,10 @@ public class TarimKVLocal {
         Slot slot = getSlot(request.getChunkID());
         ColumnFamilyHandle cfh = slot.getColumnFamilyHandle(cfName);
 
+        String key = KeyValueCodec.KeyEncode(request.getChunkID(), request.getKey());
+        logger.info("delete(), internal key: " + key);
         WriteOptions writeOpt = new WriteOptions();
-        slot.delete(writeOpt, cfh, request.getKey());
+        slot.delete(writeOpt, cfh, key);
     }
 
     private void validPrefixSeekParam(PrefixSeekRequest request) throws TarimKVException
@@ -191,6 +210,7 @@ public class TarimKVLocal {
             throw new TarimKVException(Status.PARAM_ERROR);
         }
         KVSchema.PrepareScanInfo scanInfo = new KVSchema.PrepareScanInfo();
+        scanInfo.chunkDetails = new ArrayList<>();
         String cfName = Integer.toString(tableID);
         for(int i = 0; i < chunks.length; i++)
         {
@@ -199,13 +219,24 @@ public class TarimKVLocal {
             KVSchema.ChunkDetail chunkDetail = new KVSchema.ChunkDetail();
             chunkDetail.chunkID = chunks[i];
             // get current snapshot, and keep it in memory until scan stop
-            chunkDetail.scanHandler = slot.prepareScan(cfh);
+            String keyPrefix = KeyValueCodec.ChunkOnlyKeyPrefixEncode(chunks[i]);
+            chunkDetail.scanHandler = slot.prepareScan(cfh, keyPrefix);
             chunkDetail.mergePolicy = 1;
             chunkDetail.mainPath = lMetadata.mainPath; //TODO: may too long
             //TODO: different chunks may in same slot, should return the same snapshot
+            logger.info("prepareChunkScan(), ColumnFamilyHandle name: " + cfh.getName() 
+                      + ", chunkID: " + chunks[i]
+                      + ", scanHandler: " + chunkDetail.scanHandler
+                      + ", mainPath: " + chunkDetail.mainPath);
+            scanInfo.chunkDetails.add(chunkDetail);
         }
 
         scanInfo.mainAccount = lMetadata.mainAccount;
+
+        logger.info("prepareChunkScan(), tableID: " + tableID
+                  + ", chunks: " + Arrays.toString(chunks)
+                  + ", mainAccount: " + lMetadata.mainAccount.toString());
+        logger.info("prepareChunkScan(), scanInfo: " + scanInfo.toString());
 
         return scanInfo;
     }
@@ -228,6 +259,8 @@ public class TarimKVLocal {
             throws RocksDBException, TarimKVException
     {
         //TODO: support lastKey and scanSize for full scan
+        ifComplete = true;
+
         validDeltaChunkScanParam(param);
         String cfName = Integer.toString(param.tableID);
         Slot slot = getSlot(param.chunkID);
@@ -247,5 +280,12 @@ public class TarimKVLocal {
             Slot slot = getSlot(handler.chunkID);
             slot.releaseScanHandler(handler.scanHandler);
         }
+    }
+
+    public void closeChunkScan(int tableID, long chunkID, long scanHandler) throws TarimKVException
+    {
+        String cfName = Integer.toString(tableID);
+        Slot slot = getSlot(chunkID);
+        slot.releaseScanHandler(scanHandler);
     }
 }

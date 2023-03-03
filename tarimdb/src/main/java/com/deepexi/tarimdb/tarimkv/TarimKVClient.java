@@ -37,10 +37,17 @@ public class TarimKVClient {
         this.lMetadata = lMetadata;
     }
 
-    public int init() {
+    public int init() throws Exception, IllegalArgumentException, TarimKVException 
+    {
         getKVMetadata();
         kvLocal = new TarimKVLocal(metaClient, lMetadata);
-        kvLocal.init();
+        try{
+            kvLocal.init();
+        } catch (RocksDBException e){
+            logger.error("client init, rocksdb exception: %s\n", e.getMessage());
+            e.printStackTrace();
+            throw new TarimKVException(Status.ROCKSDB_ERROR);
+        }
         return 0;
     }
 
@@ -89,7 +96,7 @@ public class TarimKVClient {
         }
     }
     
-    public List<KeyValue> prefixSeek(PrefixSeekRequest request) throws TarimKVException 
+    public List<TarimKVProto.KeyValue> prefixSeek(PrefixSeekRequest request) throws TarimKVException 
     {
         //TODO: write local or remote rocksdb here if necessary
         //TODO: check if distribution is correct. 
@@ -140,6 +147,13 @@ public class TarimKVClient {
         //TODO: write local or remote rocksdb here if necessary
         //TODO: check if distribution is correct. 
         kvLocal.closeChunkScan(tableID, scanHandlers);
+    }
+
+    public void closeChunkScan(int tableID, long chunkID, long scanHandler) throws TarimKVException
+    {
+        //TODO: write local or remote rocksdb here if necessary
+        //TODO: check if distribution is correct. 
+        kvLocal.closeChunkScan(tableID, chunkID, scanHandler);
     }
 }
 

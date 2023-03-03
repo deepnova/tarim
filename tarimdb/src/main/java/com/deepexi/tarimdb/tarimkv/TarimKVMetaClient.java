@@ -158,7 +158,7 @@ public class TarimKVMetaClient {
         return node;
     }
 
-    public String getMasterReplicaSlot(TarimKVProto.RGroupItem rgroup){
+    public String getMasterReplicaSlotFromRGroup(TarimKVProto.RGroupItem rgroup){
         for(TarimKVProto.Slot slot : rgroup.getSlotsList()){
             if(slot.getRole() == TarimKVProto.SlotRole.SR_MASTER){
                 logger.debug("rgroup:" + rgroup.getId() + "(hashValue:" + rgroup.getHashValue()
@@ -169,7 +169,7 @@ public class TarimKVMetaClient {
         logger.error("rgroup:" + rgroup.getId() + "(hashValue:" + rgroup.getHashValue() + ") not found master slot.");
         return null;
     }
-    public String getMasterReplicaSlot(long hashValue) {
+    public String getMasterReplicaSlotByHash(long hashValue) {
         if(dataDist == null) {
             refreshDistribution();
         }
@@ -178,7 +178,7 @@ public class TarimKVMetaClient {
             logger.error("fatal error, not found any rgroup, that means no data node.");
             return null;
         }else if(rgroups.size() == 1){
-            return getMasterReplicaSlot(rgroups.get(0));
+            return getMasterReplicaSlotFromRGroup(rgroups.get(0));
         }else{
             TarimKVProto.RGroupItem last;
             TarimKVProto.RGroupItem curr;
@@ -187,15 +187,15 @@ public class TarimKVMetaClient {
                 last = rgroups.get(i-1);
                 curr = rgroups.get(i);
                 if(last.getHashValue() < hashValue && hashValue <= curr.getHashValue()){
-                    return getMasterReplicaSlot(curr);
+                    return getMasterReplicaSlotFromRGroup(curr);
                 }
             }
-            return getMasterReplicaSlot(rgroups.get(0)); // 所有节点看成一个环，找不到的hash值即分布在第一个节点上。
+            return getMasterReplicaSlotFromRGroup(rgroups.get(0)); // 所有节点看成一个环，找不到的hash值即分布在第一个节点上。
         }
     }
-    public String getMasterReplicaSlot(int chunkID) {
-        long hash = MurmurHash3.hash32((long)chunkID);
+    public String getMasterReplicaSlot(long chunkID) {
+        long hash = MurmurHash3.hash32(chunkID);
         logger.debug("chunkID: " + chunkID + ", hash: " + hash);
-        return getMasterReplicaSlot(hash);
+        return getMasterReplicaSlotByHash(hash);
     }
 }

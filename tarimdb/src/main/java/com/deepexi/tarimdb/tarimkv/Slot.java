@@ -13,7 +13,6 @@ import org.apache.logging.log4j.Logger;
 
 import com.deepexi.rpc.TarimKVProto;
 import org.rocksdb.*;
-//import org.rocksdb.RocksIterator;
 import org.rocksdb.util.SizeUnit;
 
 import com.deepexi.tarimdb.util.Status;
@@ -28,10 +27,8 @@ import com.deepexi.tarimdb.util.HandlerMap;
 public class Slot 
 {
     public final static Logger logger = LogManager.getLogger(Slot.class);
-    //private org.rocksdb.Status RocksStatus;
     private TarimKVProto.Slot slotConfig;
     private RocksDB db;
-    //private Map<byte[], ColumnFamilyHandle> mapColumnFamilyHandles;
     private Map<String, ColumnFamilyHandle> mapColumnFamilyHandles;
 
     private HandlerMap<RocksIterator> mapScanHandlers; //TODO: clear handlers which not be closed.
@@ -110,7 +107,7 @@ public class Slot
             sb.append(",{value=[name:");    sb.append(new String(cfh.getName()));
             sb.append(",id:");              sb.append(cfh.getID());
             sb.append("]}},");
-            logger.info("map key compare: " + (key == entry.getKey()));
+            logger.info("map key compare: " + (key.equals(entry.getKey())));
         }
         return sb.toString();
     }
@@ -141,11 +138,14 @@ public class Slot
             cfhList.add(cfHandle); // ColumnFamilyHandle for every key
         }
 
+        readOpts.setAutoPrefixMode(true);
         List<byte[]> values = db.multiGetAsList(readOpts, cfhList, keyList);
         logger.info("multiGet(), ColumnFamily name: " + new String(cfHandle.getName())
                   + ", slot id: " + getSlotID()
                   + ", key size: " + keyList.size()
                   + ", value size: " + values.size());
+        logger.info("multiGet(), keys: " + Common.BytesListToString(keyList)
+                  + ", values: " + Common.BytesListToString(values));
         return values;
     }
 
@@ -164,7 +164,9 @@ public class Slot
 
         List<TarimKVProto.KeyValue> results = new ArrayList();
 
-        for (iter.seekToFirst(); iter.isValid(); iter.next()) 
+        for (iter.seek(keyPrefix.getBytes()); 
+             iter.isValid() && Common.startWith(iter.key(), keyPrefix.getBytes()); 
+             iter.next()) 
         {
             iter.status();
             if(iter.key() == null || iter.value() == null)
@@ -174,9 +176,18 @@ public class Slot
                            + ", key prefix: " + keyPrefix);
                 continue; // TODO: throw exception if necessary in futrue.
             }
-            KeyValueCodec kvc = KeyValueCodec.KeyDecode(new String(iter.value()));
-            logger.debug("prefixSeek(), result internal key: " + iter.key() 
-                        + ", value: " + iter.value()
+            String key = new String(iter.key());
+            String value = new String(iter.value());
+            KeyValueCodec kvc = KeyValueCodec.KeyDecode(key, value);
+            if(kvc == null){
+                logger.warn("prefixSeek() key not matched and ignore, result internal key: " + key 
+                            + ", value: " + value
+                            + ", cfName: " + cfHandle.getName()
+                            + ", key prefix: " + keyPrefix);
+                continue;
+            } 
+            logger.info("prefixSeek(), result internal key: " + key
+                        + ", value: " + value
                         + ", chunkID: " + kvc.chunkID
                         + ", key: " + kvc.value.getKey()
                         + ", value: " + kvc.value.getValue()
@@ -187,10 +198,10 @@ public class Slot
         return results;
     }
 
-    public long prepareScan(ColumnFamilyHandle cfHandle) 
+    public long prepareScan(ColumnFamilyHandle cfHandle, String keyPrefix) 
     {
         ReadOptions scanOpts = new ReadOptions();
-        scanOpts.setTotalOrderSeek(true);
+        scanOpts.setAutoPrefixMode(true);
         RocksIterator it = db.newIterator(cfHandle, scanOpts);
         return mapScanHandlers.put(it);
     }
@@ -212,7 +223,9 @@ public class Slot
         List<TarimKVProto.KeyValueOp> results = new ArrayList();
 
         //TODO: control max size
-        for (iter.seekToFirst(); iter.isValid(); iter.next()) 
+        for (iter.seek(startKey.getBytes()); 
+             iter.isValid() && Common.startWith(iter.key(), startKey.getBytes());
+             iter.next()) 
         {
             iter.status();
             if(iter.key() == null || iter.value() == null)
@@ -222,8 +235,15 @@ public class Slot
                            + ", start key: " + startKey);
                 continue; // TODO: throw exception if necessary in futrue.
             }
-            KeyValueCodec kvc = KeyValueCodec.OpKeyDecode(new String(iter.value()));
-            logger.debug("deltaScan(), result internal key: " + iter.key() 
+            KeyValueCodec kvc = KeyValueCodec.OpKeyDecode(new String(iter.key()));
+            if(kvc == null){
+                logger.warn("deltaScan() key not matched and ignore, result internal key: " + iter.key() 
+                            + ", value: " + iter.value()
+                            + ", cfName: " + cfHandle.getName()
+                            + ", key prefix: " + startKey);
+                continue;
+            } 
+            logger.info("deltaScan(), result internal key: " + iter.key() 
                         + ", value: " + iter.value()
                         + ", chunkID: " + kvc.chunkID
                         + ", op: " + kvc.valueOp.getOp()

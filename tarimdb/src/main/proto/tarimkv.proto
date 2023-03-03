@@ -48,20 +48,18 @@ message RGroupItem {
 
 message Chunk {
     int32 tableID = 1;
-    int32 chunkID = 2;
+    int64 chunkID = 2;
 }
 
 message KeyValue {
     string key = 2;
     string value = 3;
-    int32 encodeVersion = 4;
 }
 
 message KeyValueOp {
     int32 op = 1; // 1: new, 2: delete
     string key = 2;
     string value = 3;
-    int32 encodeVersion = 4;
 }
 
 message DistributionInfo {
@@ -85,14 +83,14 @@ message DataDistributionResponse {
 
 message PutRequest {
     int32 tableID = 1;
-    int32 chunkID = 2;
+    int64 chunkID = 2;
     repeated KeyValue values = 3;
 }
 
 message GetRequest {
     int32 tableID = 1;
-    int32 chunkID = 2;
-    repeated string keys = 3; // need encodeVersion?
+    int64 chunkID = 2;
+    repeated string keys = 3;
 }
 
 message GetReponse {
@@ -102,7 +100,7 @@ message GetReponse {
 
 message PrefixSeekRequest {
     int32 tableID = 1;
-    int32 chunkID = 2;
+    int64 chunkID = 2;
     string prefix = 3;
     //int32 scanSize = 4; // 0: unlimited
     //int32 snapshotID; // unspported, Temp: get all one-time
@@ -111,8 +109,8 @@ message PrefixSeekRequest {
 
 message DeleteRequest {
     int32 tableID = 1;
-    int32 chunkID = 2;
-    string key = 3; // need encodeVersion?
+    int64 chunkID = 2;
+    string key = 3;
 }
 
 service TarimKVMeta {

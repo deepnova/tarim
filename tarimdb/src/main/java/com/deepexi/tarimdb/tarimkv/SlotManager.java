@@ -32,24 +32,16 @@ public class SlotManager {
         slots = new HashMap();
     }
 
-    public int init(List<TarimKVProto.Slot> slotsConfig) {
+    public int init(List<TarimKVProto.Slot> slotsConfig) throws Exception, RocksDBException {
         this.slotsConfig = slotsConfig;
         openSlots();
         return 0;
     }
 
-    private void openSlots() {
+    private void openSlots() throws Exception, IllegalArgumentException, RocksDBException {
         for(TarimKVProto.Slot conf : slotsConfig){
             Slot slot = new Slot(conf);
-            try{
-                slot.open();
-            } catch (RocksDBException e) {
-                logger.error("slot id=%s caught the expected exception -- %s\n", conf.getId(), e);
-            } catch (IllegalArgumentException e) {
-                logger.error("slot id=%s caught the expected exception -- %s\n", conf.getId(), e);
-            } catch (Exception e) {
-                logger.error("slot id=%s caught the expected exception -- %s\n", conf.getId(), e);
-            }
+            slot.open();
             slots.put(conf.getId(), slot);
         }
     }

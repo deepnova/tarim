@@ -32,33 +32,45 @@ public class KVLocalMetadata {
         sb.append(",address=");  sb.append(this.address);
         sb.append(",port=");     sb.append(this.port);
 
-        sb.append(",mnodes=[");
-        for(TarimKVProto.Node node : this.mnodes){
-            sb.append("{id=");     sb.append(node.getId());
-            sb.append(",host=");   sb.append(node.getHost());
-            sb.append(",port=");   sb.append(node.getPort());
-            //sb.append(",role=");   sb.append(node.getRole());
-            sb.append(",status="); sb.append(node.getStatus());
+        if(mnodes != null && !mnodes.isEmpty())
+        {
+            sb.append(",mnodes=[");
+            for(TarimKVProto.Node node : this.mnodes){
+                sb.append("{id=");     sb.append(node.getId());
+                sb.append(",host=");   sb.append(node.getHost());
+                sb.append(",port=");   sb.append(node.getPort());
+                //sb.append(",role=");   sb.append(node.getRole());
+                sb.append(",status="); sb.append(node.getStatus());
+                sb.append("}");
+            }
+            sb.append("]");
+        }
+
+        if(slots != null && !slots.isEmpty())
+        {
+            sb.append(",slots=[");
+            for(TarimKVProto.Slot slot : this.slots){
+                sb.append("{id=");          sb.append(slot.getId());
+                sb.append(",dataPath=");    sb.append(slot.getDataPath());
+                sb.append(",role=");        sb.append(slot.getRole());
+                sb.append(",status=");      sb.append(slot.getStatus());
+                sb.append("}");
+            }
+            sb.append("]");
+        }
+
+        if(mainAccount != null)
+        {
+            sb.append(",mainAccount={");
+            sb.append("type=");         sb.append(this.mainAccount.accountType);
+            sb.append(",username=");    sb.append(this.mainAccount.username);
+            sb.append(",token=");       sb.append(this.mainAccount.token);
             sb.append("}");
         }
-        sb.append("]");
 
-        sb.append(",slots=[");
-        for(TarimKVProto.Slot slot : this.slots){
-            sb.append("{id=");          sb.append(slot.getId());
-            sb.append(",dataPath=");    sb.append(slot.getDataPath());
-            sb.append(",role=");        sb.append(slot.getRole());
-            sb.append(",status=");      sb.append(slot.getStatus());
-            sb.append("}");
-        }
-        sb.append("]");
-
-        sb.append(",mainAccount={");
-        sb.append("type=");         sb.append(this.mainAccount.accountType);
-        sb.append(",username=");    sb.append(this.mainAccount.username);
-        sb.append(",token=");       sb.append(this.mainAccount.token);
-        sb.append("},mainPath");    sb.append(this.mainPath);
+        sb.append(",mainPath=");    sb.append(this.mainPath);
         sb.append("}");
+
         return sb.toString();
     }
 
@@ -91,6 +103,13 @@ public class KVLocalMetadata {
         public Node(Node node) {
             this.host = node.host;
             this.port = node.port;
+        }
+        public String toString(TarimKVProto.Node node) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("{host=");     sb.append(host);
+            sb.append(",port=");     sb.append(port);
+            sb.append("}");
+            return sb.toString();
         }
     }
 }

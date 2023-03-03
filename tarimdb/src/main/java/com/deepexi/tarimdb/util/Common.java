@@ -26,5 +26,28 @@ public class Common {
         return bytesList;
     }
 
+    public static String BytesListToString(List<byte[]> bytesList)
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[");
+        for(byte[] str : bytesList)
+        {
+            if(str == null) sb.append("(null)");
+            else sb.append(new String(str));
+            sb.append(",");
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
+    public static boolean startWith(final byte[] src, final byte[] prefix)
+    {
+        if(src.length < prefix.length) return false;
+        for(int i = 0; i < prefix.length; i++)
+        {
+            if(src[i] != prefix[i]) return false;
+        }
+        return true;
+    }
 }
 
