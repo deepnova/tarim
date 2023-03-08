@@ -13,7 +13,6 @@ import org.apache.flink.table.connector.source.abilities.SupportsLimitPushDown;
 import org.apache.flink.table.connector.source.abilities.SupportsProjectionPushDown;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.expressions.ResolvedExpression;
-import org.apache.iceberg.Table;
 import org.apache.iceberg.expressions.Expression;
 import org.apache.iceberg.flink.TableLoader;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
@@ -22,9 +21,9 @@ import java.util.List;
 import java.util.Map;
 
 public class TarimTableSource implements ScanTableSource, SupportsProjectionPushDown, SupportsFilterPushDown, SupportsLimitPushDown {
-    private int[] projectedFields;
-    private long limit;
-    private List<Expression> filters;
+    private final int[] projectedFields;
+    private final long limit;
+    private final List<Expression> filters;
 
     private final TableLoader tableLoader;
     private final TableSchema schema;

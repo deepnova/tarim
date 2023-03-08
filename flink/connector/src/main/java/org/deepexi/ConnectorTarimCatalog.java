@@ -13,7 +13,7 @@ import java.util.Map;
 
 public class ConnectorTarimCatalog implements Catalog {
 
-    private String catalogName;
+    private final String catalogName;
     private String databaseName;
     ConnectorTarimCatalog(String catalogName){
         this.catalogName = catalogName;

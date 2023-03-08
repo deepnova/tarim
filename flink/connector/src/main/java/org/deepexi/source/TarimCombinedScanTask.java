@@ -12,12 +12,9 @@ public class TarimCombinedScanTask implements CombinedScanTask {
 
     private String trunkInfo;
     private final List<FileScanTask> tasks;
-
-    public TarimCombinedScanTask( List<FileScanTask>  tasks) {
-        Preconditions.checkNotNull(tasks, "tasks cannot be null");
-        this.tasks = tasks;
-    }
+    
     public TarimCombinedScanTask(String trunkInfo, List<FileScanTask>  tasks) {
+        Preconditions.checkNotNull(tasks, "tasks cannot be null");
         this.trunkInfo = trunkInfo;
         this.tasks = tasks;
     }

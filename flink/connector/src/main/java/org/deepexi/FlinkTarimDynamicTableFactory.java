@@ -1,7 +1,6 @@
 package org.deepexi;
 
 import org.apache.flink.configuration.ConfigOption;
-import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.catalog.CatalogTable;
 import org.apache.flink.table.catalog.ObjectPath;
@@ -17,7 +16,6 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.common.DynMethods;
 import org.apache.iceberg.flink.CatalogLoader;
-import org.apache.iceberg.flink.FlinkCatalog;
 import org.apache.iceberg.flink.TableLoader;
 import org.deepexi.sink.TarimTableSink;
 import org.deepexi.source.TarimTableSource;

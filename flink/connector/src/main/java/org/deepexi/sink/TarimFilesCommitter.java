@@ -1,6 +1,6 @@
 package org.deepexi.sink;
 
-import org.apache.commons.lang.SerializationUtils;
+
 import org.apache.flink.api.common.state.ListState;
 import org.apache.flink.api.common.state.ListStateDescriptor;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
@@ -11,18 +11,18 @@ import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
 import org.apache.flink.streaming.api.operators.BoundedOneInput;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
-import org.apache.flink.table.data.RowData;
+
 import org.apache.flink.table.runtime.typeutils.SortedMapTypeInfo;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.Table;
-import org.apache.iceberg.io.WriteResult;
+
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.base.Strings;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.types.Comparators;
 import org.apache.iceberg.types.Types;
-import org.apache.iceberg.util.SerializationUtil;
+
 import org.deepexi.TarimDbAdapt;
 import org.deepexi.WResult;
 import org.slf4j.Logger;
@@ -30,21 +30,17 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
-import static com.sun.org.apache.xml.internal.serialize.OutputFormat.Defaults.Encoding;
-
 
 class TarimFilesCommitter extends AbstractStreamOperator<Void>
         implements OneInputStreamOperator<WResult, Void>, BoundedOneInput {
 
-    private Table table;
+    private final Table table;
     private static TarimDbAdapt dbAdapter;
 
     private transient int subTaskId;
     private transient int attemptId;
     private transient String flinkJobId;
     private transient long maxCommittedCheckpointId;
-    private transient int continuousEmptyCheckpoints;
-    private transient int maxContinuousEmptyCommits;
 
     private static final long serialVersionUID = 1L;
     private static final long INITIAL_CHECKPOINT_ID = -1L;
@@ -62,7 +58,7 @@ class TarimFilesCommitter extends AbstractStreamOperator<Void>
 
     private final NavigableMap<Long, byte[]> dataListPerCheckpoint = Maps.newTreeMap();
 
-    private final List<WResult> resultsOfCurrentCkpt = Lists.newArrayList();
+    private final List<WResult> resultsOfCurrentCkPt = Lists.newArrayList();
     TarimFilesCommitter(Table table) {
         this.table = table;
     }
@@ -75,31 +71,29 @@ class TarimFilesCommitter extends AbstractStreamOperator<Void>
     }
 
     @Override
-    public void endInput() throws Exception {
+    public void endInput() {
         //todo
-        Long checkpointId = Long.MAX_VALUE;
+        long checkpointId = Long.MAX_VALUE;
         StringBuffer sb = new StringBuffer();
-        for ( WResult wr :resultsOfCurrentCkpt){
+        for ( WResult wr :resultsOfCurrentCkPt){
             for (String str : wr.strList){
                 sb.append(str);
             }
         }
         String tmp = sb.toString();
-        LOG.info("filescommit-endInput" + tmp);
+        LOG.info("files-commit-endInput" + tmp);
         dataListPerCheckpoint.put(checkpointId, sb.toString().getBytes());
 
-        resultsOfCurrentCkpt.clear();
+        resultsOfCurrentCkPt.clear();
         dbAdapter.endData();
         dbAdapter.doCheckponit(checkpointId);
 
-        return;
     }
 
     @Override
-    public void processElement(StreamRecord<WResult> streamRecord) throws Exception {
+    public void processElement(StreamRecord<WResult> streamRecord) {
         //todo , do nothing?? needn't cache data for tarimDB here
-        this.resultsOfCurrentCkpt.add(streamRecord.getValue());
-        return;
+        this.resultsOfCurrentCkPt.add(streamRecord.getValue());
     }
 
     @Override
@@ -109,26 +103,25 @@ class TarimFilesCommitter extends AbstractStreamOperator<Void>
         long checkpointId = context.getCheckpointId();
 
         StringBuffer sb = new StringBuffer();
-        for ( WResult wr :resultsOfCurrentCkpt){
+        for ( WResult wr : resultsOfCurrentCkPt){
             for (String str : wr.strList){
                 sb.append(str);
             }
         }
 
         String tmp = sb.toString();
-        LOG.info("filescommit-snapshotState-oldstr:"+ tmp);
-        LOG.info("filescommit-snapshotState-tobytes:" + tmp.getBytes());
+        LOG.info("files-commit-snapshotState-old-str:"+ tmp);
+        LOG.info("files-commit-snapshotState-to-bytes:" + tmp.getBytes());
 
         dataListPerCheckpoint.put(checkpointId, sb.toString().getBytes());
         String tmpNew = new String(tmp.getBytes());
-        LOG.info("filescommit-snapshotState-newstr:" + tmpNew);
+        LOG.info("files-commit-snapshotState-new-str:" + tmpNew);
         checkpointsState.clear();
         checkpointsState.add(dataListPerCheckpoint);
         jobIdState.clear();
         jobIdState.add(flinkJobId);
 
-        resultsOfCurrentCkpt.clear();
-        return;
+        resultsOfCurrentCkPt.clear();
     }
     @Override
     public void initializeState(StateInitializationContext context) throws Exception {
@@ -193,21 +186,7 @@ class TarimFilesCommitter extends AbstractStreamOperator<Void>
         //todo, get the lastCommittedCheckpointId from TarimDB,or connector get it directly
 
         lastCommittedCheckpointId = dbAdapter.getLastommittedCheckpointId();
-        /*
-        while (snapshot != null) {
-            Map<String, String> summary = snapshot.summary();
-            String snapshotFlinkJobId = summary.get(FLINK_JOB_ID);
-            if (flinkJobId.equals(snapshotFlinkJobId)) {
-                String value = summary.get(MAX_COMMITTED_CHECKPOINT_ID);
-                if (value != null) {
-                    lastCommittedCheckpointId = Long.parseLong(value);
-                    break;
-                }
-            }
-            Long parentSnapshotId = snapshot.parentId();
-            snapshot = parentSnapshotId != null ? table.snapshot(parentSnapshotId) : null;
-        }
-        */
+
         return lastCommittedCheckpointId;
     }
 }

@@ -49,7 +49,7 @@ public class TarimDbAdapt implements Serializable {
 
     public boolean doCheckponit(long checkpointId){
         //todo ,send to tarimDB
-        LOG.info("send doCheckponit to trimDB");
+        LOG.info("send checkponit to trimDB");
         return true;
     }
 
@@ -64,7 +64,7 @@ public class TarimDbAdapt implements Serializable {
         LOG.info("getDeltaData to tarimDB");
         List<DeltaData> datalist = new ArrayList<>();
 
-        //simulate some datas
+        //simulate some data
         if (trunkId.equals("d1")){
             datalist.add(new DeltaData(GenericRowData.of(fromString("d1222"), 2)));
 

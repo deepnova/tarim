@@ -5,7 +5,7 @@ import org.apache.flink.table.data.RowData;
 public class DeltaData {
     private boolean matchFlag = false;
 
-    private RowData data;
+    private final RowData data;
 
     public DeltaData(RowData data){
         this.data = data;
@@ -15,7 +15,7 @@ public class DeltaData {
         this.matchFlag = matchFlag;
     }
 
-    public RowData getDatas(){
+    public RowData getData(){
         return this.data;
     }
 

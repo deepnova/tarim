@@ -13,12 +13,11 @@ import org.apache.iceberg.encryption.EncryptionManager;
 import org.apache.iceberg.flink.source.DataIterator;
 import org.apache.iceberg.flink.source.RowDataFileScanTaskReader;
 import org.apache.iceberg.io.FileIO;
-import org.apache.iceberg.relocated.com.google.common.annotations.VisibleForTesting;
+
 
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import org.deepexi.TarimDbAdapt;
 
@@ -32,13 +31,11 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
 
     private transient DataIterator<RowData> iterator;
     private transient long currentReadCount = 0L;
-    private TarimDbAdapt tarimDbAdapt;
+    private final TarimDbAdapt tarimDbAdapt;
     private List<DeltaData> deltaData;
     private Iterator deltaDataIterator;
-    private boolean endflag = false;
+    private boolean endFlag = false;
     private DeltaData nextDeltaData;
-
-    private Set<Integer> iferFieldIds;
 
     private int primaryIdInFlink;
 
@@ -52,11 +49,6 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
         this.rowDataReader = new RowDataFileScanTaskReader(tableSchema,
                 context.project(), context.nameMapping(), context.caseSensitive());
 
-    }
-
-    @VisibleForTesting
-    Schema projectedSchema() {
-        return context.project();
     }
 
     @Override
@@ -91,9 +83,8 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
         }
 
         //todo, how to check if there is the pk?
-        iferFieldIds = context.project().identifierFieldIds();
 
-        Iterator iteratorTmp = iferFieldIds.iterator();
+        Iterator<Integer> iteratorTmp = context.project().identifierFieldIds().iterator();
         //only support 1 primary key
         if (iteratorTmp.hasNext()) {
             Object next =  iteratorTmp.next();
@@ -102,7 +93,7 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
         }
 
         this.deltaDataIterator = deltaData.iterator();
-        this.endflag = false;
+        this.endFlag = false;
     }
 
     @Override
@@ -111,7 +102,7 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
             return true;
         } else {
             if (!iterator.hasNext()) {
-                endflag = true;
+                endFlag = true;
 
                 //filter the data already merged
                 while (deltaDataIterator.hasNext()) {
@@ -132,14 +123,14 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
     public RowData nextRecord(RowData reuse) {
         currentReadCount++;
 
-        if (!endflag){
+        if (!endFlag){
             RowData mainElement = iterator.next();
             RowData deltaElement;
 
             for (DeltaData delta: deltaData) {
-                if (((GenericRowData) (delta.getDatas())).getField(primaryIdInFlink)
+                if (((GenericRowData) (delta.getData())).getField(primaryIdInFlink)
                         == ((GenericRowData) mainElement).getField(primaryIdInFlink)) {
-                    deltaElement = delta.getDatas();
+                    deltaElement = delta.getData();
                     delta.setMatchFlag(true);
                     return deltaElement;
                 }
@@ -147,7 +138,7 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
 
             return mainElement;
         }else{
-            return nextDeltaData.getDatas();
+            return nextDeltaData.getData();
         }
         //return iterator.next();
     }
