@@ -155,12 +155,12 @@ public class FlinkTarimCatalog extends AbstractCatalog {
         */
 
         TypeInformation<?>[] types = new TypeInformation[]{
-                INT_TYPE_INFO,
+                STRING_TYPE_INFO,
                 INT_TYPE_INFO,
         };
 
         String[] names = new String[]{
-                "test1",
+                "class",
                 "userid",
         };
 
