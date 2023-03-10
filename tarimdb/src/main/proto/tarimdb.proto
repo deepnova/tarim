@@ -25,6 +25,10 @@ message GetTableResponse {
     // reuse avro schema declaration: 
     //   https://avro.apache.org/docs/1.11.1/specification/#schema-declaration
     string table = 4;
+    string primaryKey = 5; // clumn name of table
+    repeated string paritionKeys = 6;
+    map<string, string> properties = 7;
+    string comment = 8;
 }
 
 message InsertRequest {

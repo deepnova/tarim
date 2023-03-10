@@ -15,6 +15,8 @@ import com.deepexi.tarimdb.tarimkv.KVMetadata;
 import com.deepexi.tarimdb.tarimkv.YamlLoader;
 import com.deepexi.tarimdb.datamodels.TarimDBMeta;
 
+import org.rocksdb.RocksDBException;
+
 /**
  * MetaNode
  *
@@ -31,7 +33,8 @@ public class MetaNode extends AbstractNode {
     }
 
     @Override
-    public Status init(){ 
+    public Status init()
+    { 
         logger.info("metanode init");
         metadata = new KVMetadata();
         YamlLoader.loadMetaConfig(conf_.configFile, metadata);
@@ -39,12 +42,12 @@ public class MetaNode extends AbstractNode {
     }
 
     @Override
-    public Status start() {
-
+    public Status start() 
+    {
         try{
             ServerBuilder builder = ServerBuilder.forPort(port);
             builder.addService(new TarimKVMeta(metadata));
-            builder.addService(new TarimDBMeta(/*metadata*/));
+            builder.addService(new TarimDBMeta(metadata));
             server = builder.build().start();
             logger.info("service start...");
 
@@ -58,8 +61,14 @@ public class MetaNode extends AbstractNode {
                 }
             });
 
+        } catch(RocksDBException e){
+            logger.error("MetaNode start error(RocksDBException)");
+            return Status.SERVER_START_FAILED;
         } catch(IOException e){
             logger.error("MetaNode start error(IOException)");
+            return Status.SERVER_START_FAILED;
+        } catch(Exception e){
+            logger.error("MetaNode start error(Exception)");
             return Status.SERVER_START_FAILED;
         }
 
