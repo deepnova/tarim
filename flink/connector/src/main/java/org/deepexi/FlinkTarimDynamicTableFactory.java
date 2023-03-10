@@ -10,18 +10,24 @@ import org.apache.flink.table.factories.DynamicTableFactory;
 import org.apache.flink.table.factories.DynamicTableSinkFactory;
 import org.apache.flink.table.factories.DynamicTableSourceFactory;
 import org.apache.flink.table.utils.TableSchemaUtils;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.Table;
+import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.common.DynMethods;
+import org.apache.iceberg.flink.CatalogLoader;
 import org.apache.iceberg.flink.TableLoader;
 import org.deepexi.sink.TarimTableSink;
+import org.deepexi.source.TarimTableSource;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
 public class FlinkTarimDynamicTableFactory implements DynamicTableSinkFactory, DynamicTableSourceFactory {
 
     static final String FACTORY_IDENTIFIER = "tarim";
-    public ConnectorTarimTable table;
+    public Table table;
 
     public FlinkTarimDynamicTableFactory(FlinkTarimCatalog catalog) {
         this.catalog = catalog;
@@ -62,7 +68,35 @@ public class FlinkTarimDynamicTableFactory implements DynamicTableSinkFactory, D
 
     @Override
     public DynamicTableSource createDynamicTableSource(Context context) {
-        return null;
+        ObjectPath objectPath = context.getObjectIdentifier().toObjectPath();
+        //ObjectIdentifier objectIdentifier = context.getObjectIdentifier();
+        CatalogTable catalogTable = loadCatalogTable(context);
+        Map<String, String> tableProps = catalogTable.getOptions();
+        TableSchema tableSchema = TableSchemaUtils.getPhysicalSchema(catalogTable.getSchema());
+
+       // TableLoader tableLoader;
+        if (catalog != null) {
+            //table = catalog.getCatalog().loadTable(catalog.toIdentifier(objectPath));
+            //fix the config first
+            String CATALOG_NAME = "hadoop_catalog";
+            String DATABASE_NAME = "default_db";
+            Map<String, String> properties = new HashMap<>();
+            properties.put("warehouse", "hdfs://10.201.0.82:9000/wpf0220");
+            properties.put("format-version", "2");
+            CatalogLoader loader = CatalogLoader.hadoop(CATALOG_NAME, new Configuration(), properties);
+            ObjectPath tablePath = new ObjectPath(DATABASE_NAME, "new_table9");
+
+            TableLoader tableLoader = TableLoader.fromCatalog(loader, TableIdentifier.of(Namespace.of(tablePath.getDatabaseName()), tablePath.getObjectName()));
+            tableLoader.open();
+
+            return new TarimTableSource(tableLoader, tableSchema, tableProps, context.getConfiguration());
+
+        } else {
+            //todo
+            return null;
+        }
+
+
     }
 
     @Override
