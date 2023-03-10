@@ -73,6 +73,5 @@ class TarimDBMetaTest {
         logger.info("getTable request: " + request.toString());
         logger.info("getTable response: " + response.toString());
     }
-
 }
 

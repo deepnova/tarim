@@ -90,6 +90,11 @@ public class YamlLoader {
             metadata.rgroups.add(rgBuiler.build());
         }
 
+        slotBuiler.clear();
+        slotBuiler.setId(obj.get("metaSlotID").toString());
+        slotBuiler.setDataPath(obj.get("metaSlotDataPath").toString());
+        metadata.metaSlotConf = slotBuiler.build();
+
         logger.debug("MetaConfig: " + metadata.toString());
 
         return Status.OK;

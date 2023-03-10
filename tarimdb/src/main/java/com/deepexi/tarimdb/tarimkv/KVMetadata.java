@@ -19,9 +19,10 @@ public class KVMetadata {
     public List<TarimKVProto.Node> mnodes;
     public List<TarimKVProto.RGroupItem> rgroups;
     public List<TarimKVProto.Node> dnodes;
-
+    
     private DistributionInfo dataDist;
 
+    public TarimKVProto.Slot metaSlotConf;
 
     public DistributionInfo toDistributionInfo(boolean rebuild){
         if(dataDist == null || rebuild == true){
@@ -83,6 +84,10 @@ public class KVMetadata {
             sb.append("}");
         }
         sb.append("]");
+
+        sb.append(",metaSlotConf={id=");    sb.append(metaSlotConf.getId());
+        sb.append(",dataPath=");            sb.append(metaSlotConf.getDataPath());
+        sb.append("}");
 
         sb.append("}");
         return sb.toString();

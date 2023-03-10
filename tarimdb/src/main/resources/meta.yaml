@@ -80,3 +80,6 @@ rgroups:
     slots:
       - id: sl-3-2
         role: 1
+
+metaSlotID: meta-sl-1
+metaSlotDataPath: /data/tarim-data/tarimkv-data-test/meta/

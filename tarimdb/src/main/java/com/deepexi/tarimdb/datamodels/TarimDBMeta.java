@@ -5,10 +5,13 @@ import org.apache.logging.log4j.Logger;
 
 import com.deepexi.tarimdb.util.Status;
 import com.deepexi.tarimdb.tarimkv.KVMetadata;
+import com.deepexi.tarimdb.tarimkv.Slot;
 
 import io.grpc.stub.StreamObserver;
 import com.deepexi.rpc.TarimMetaGrpc;
 import com.deepexi.rpc.TarimProto;
+
+import org.rocksdb.RocksDBException;
 
 /**
  * TarimDBMeta
@@ -18,11 +21,14 @@ public class TarimDBMeta extends TarimMetaGrpc.TarimMetaImplBase {
 
     public final static Logger logger = LogManager.getLogger(TarimDBMeta.class);
 
-    //private KVMetadata metadata;
+    private KVMetadata metadata;
+    Slot slot; //TODO: temporary implements, DB metadata save in a rocksdb instance.
 
-    public TarimDBMeta(/*KVMetadata metadata*/) {
+    public TarimDBMeta(KVMetadata metadata) throws Exception, RocksDBException, IllegalArgumentException {
         super();
-        //this.metadata = metadata;
+        this.metadata = metadata;
+        this.slot = new Slot(metadata.metaSlotConf);
+        slot.open();
         //logger.debug("TarimDBMeta constructor, metadata: " + metadata.toString());
     }
 
