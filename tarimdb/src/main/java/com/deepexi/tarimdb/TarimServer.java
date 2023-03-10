@@ -70,6 +70,8 @@ public class TarimServer {
             }
         } catch(InterruptedException e){
             logger.error("InterruptedException error");
+        } catch(Exception e){
+            logger.error("Exception error");
         }
 
         logger.debug( "TarimServer stopped!" );

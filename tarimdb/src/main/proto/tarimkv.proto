@@ -1,0 +1,125 @@
+syntax = "proto3";
+
+option java_multiple_files = false;//以非外部类模式生成
+option java_package = "com.deepexi.rpc";//所在包名
+option java_outer_classname = "TarimKVProto";//最外层类名称
+
+enum NodeStatus {
+    NS_INIT     = 0;
+    NS_RUNNING  = 1;
+    NS_OFFLINE  = 2;
+    NS_FAILURE  = 3;
+}
+
+enum SlotStatus {
+    SS_IDLE         = 0;
+    SS_ALLOCATED    = 1;
+    SS_USING        = 2;
+    SS_OFFLINE      = 3;
+    SS_FAILURE      = 4;
+}
+
+enum SlotRole {
+    SR_NONE         = 0;
+    SR_MASTER       = 1;
+    SR_SECONDARY    = 2;
+}
+
+message Slot {
+    string id = 1;
+    string dataPath = 2;
+    SlotRole role = 3;
+    SlotStatus status = 4;
+}
+
+message Node {
+    string id = 1;
+    string host = 2;
+    int32 port = 3;
+    repeated Slot slots = 4;
+    NodeStatus status = 5;
+}
+
+message RGroupItem {
+    string id = 1;
+    int64 hashValue = 2;
+    repeated Slot slots = 3;
+}
+
+message Chunk {
+    int32 tableID = 1;
+    int64 chunkID = 2;
+}
+
+message KeyValue {
+    string key = 2;
+    string value = 3;
+}
+
+message KeyValueOp {
+    int32 op = 1; // 1: new, 2: delete
+    string key = 2;
+    string value = 3;
+}
+
+message DistributionInfo {
+    repeated RGroupItem rgroups = 1;
+    repeated Node dnodes = 2;
+}
+
+message DataDistributionRequest {
+    int32 tableID = 1; // 可以不需要
+}
+
+message StatusResponse {
+    int32 code = 1;
+    string msg = 2;
+}
+
+message DataDistributionResponse {
+    StatusResponse status = 1;
+    DistributionInfo distribution = 2;
+}
+
+message PutRequest {
+    int32 tableID = 1;
+    int64 chunkID = 2;
+    repeated KeyValue values = 3;
+}
+
+message GetRequest {
+    int32 tableID = 1;
+    int64 chunkID = 2;
+    repeated string keys = 3;
+}
+
+message GetReponse {
+    StatusResponse status = 1;
+    repeated KeyValueOp values = 2;
+}
+
+message PrefixSeekRequest {
+    int32 tableID = 1;
+    int64 chunkID = 2;
+    string prefix = 3;
+    //int32 scanSize = 4; // 0: unlimited
+    //int32 snapshotID; // unspported, Temp: get all one-time
+    //string lastKey;   // unspported, Temp: get all one-time
+}
+
+message DeleteRequest {
+    int32 tableID = 1;
+    int64 chunkID = 2;
+    string key = 3;
+}
+
+service TarimKVMeta {
+    rpc getDataDistribution(DataDistributionRequest) returns (DataDistributionResponse);
+}
+
+service TarimKV { // for DB metadata
+    rpc put(PutRequest) returns (StatusResponse);
+    rpc get(GetRequest) returns (GetReponse);
+    rpc prefixSeek(PrefixSeekRequest) returns (GetReponse);
+    rpc delete(DeleteRequest) returns (StatusResponse);
+}

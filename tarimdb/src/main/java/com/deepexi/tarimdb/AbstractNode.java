@@ -14,7 +14,7 @@ public abstract class AbstractNode {
     public AbstractNode(BasicConfig conf){
         this.conf_ = conf;
     }
-    public Status init(){ 
+    public Status init() throws Exception { 
         return Status.OK;
     }
     public Status start(){
