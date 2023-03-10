@@ -4,6 +4,7 @@ import org.apache.iceberg.*;
 import org.apache.iceberg.expressions.Expression;
 
 import org.apache.iceberg.io.CloseableIterable;
+import org.apache.iceberg.relocated.com.google.common.collect.FluentIterable;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.transforms.Transform;
 
@@ -24,6 +25,9 @@ public class TarimFlinkSplitPlanner {
             List<FileScanTask> tasks = Lists.newArrayList(
                     table.newScan().planFiles());
 
+//            Iterable<FileScanTask> splitTasks = FluentIterable
+//                    .from(tasks)
+//                    .transformAndConcat(input -> input.split(TableProperties.METADATA_SPLIT_SIZE_DEFAULT));
             HashMap<String, Integer> map = new HashMap<>();
             Object test = null;
             int index = 0;
