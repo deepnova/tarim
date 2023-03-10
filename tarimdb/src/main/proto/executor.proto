@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+option java_multiple_files = false;//以非外部类模式生成
+option java_package = "com.deepexi.rpc";//所在包名
+option java_outer_classname = "TarimExecutor";//最外层类名称
+
+//Reference TiDB: https://github.com/pingcap/tipb/blob/master/proto/executor.proto
+
+enum ExecType {
+	TypeTableScan = 0;
+	TypeIndexScan = 1;
+	TypeSelection = 2;
+	TypeAggregation = 3;
+	TypeTopN = 4;
+	TypeLimit = 5;
+	TypeProjection = 6;
+	TypePartitionTableScan = 7;
+	TypeSort = 8;
+    //TODO: more
+}
+
+message Executor {
+    int32 ExecType = 1;
+    oneof exec {
+        TableScan tableScan = 2;
+        Selection selection = 3;
+        Projection projection = 4;
+	    PartitionTableScan partitionScan = 5;
+        //TODO: more
+    }
+}
+
+message TableScan {
+	int32 tableID = 1;
+	repeated string columns = 2;
+}
+
+message PartitionTableScan {
+	int32 tableID = 1;
+	repeated string columns = 2;
+	repeated int32 partitionIds = 3;
+}
+
+message Selection {
+    //TODO:
+	// Where conditions.
+	//repeated Expr conditions = 1;
+	//repeated RpnExpr rpn_conditions = 2;
+	//optional Executor child = 3;
+}
+
+message Projection {
+    //TODO:
+	// Projection expressions.
+	//repeated Expr exprs = 1;
+	//repeated RpnExpr rpn_exprs = 2;
+	//optional Executor child = 3;
+}

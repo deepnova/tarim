@@ -61,7 +61,7 @@ public class KVSchema {
         // 1：client_merge
         // 2：server_merge
         public int mergePolicy; // only implement 'client_merge' policy first
-        public String mainPath;
+        public List<String> mainPaths;
 
         public String toString()
         {
@@ -69,7 +69,7 @@ public class KVSchema {
             sb.append("{chunkID=");         sb.append(chunkID);
             sb.append(",scanHandler=");     sb.append(scanHandler);
             sb.append(",mergePolicy=");     sb.append(mergePolicy);
-            sb.append(",mainPath=");        sb.append(mainPath);
+            sb.append(",mainPaths=");       sb.append(mainPaths.toString());
             sb.append("}");
             return sb.toString();
         }

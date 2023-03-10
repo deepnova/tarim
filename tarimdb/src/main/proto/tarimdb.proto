@@ -2,8 +2,111 @@ syntax = "proto3";
 
 option java_multiple_files = false;//以非外部类模式生成
 option java_package = "com.deepexi.rpc";//所在包名
-option java_outer_classname = "TarimDBProto";//最外层类名称
+option java_outer_classname = "TarimProto";//最外层类名称
+
+import "executor.proto";
+import "tarimkv.proto";
+
+//message StatusResponse {
+//    int32 code = 1;
+//    string msg = 2;
+//}
+
+message GetTableRequest {
+    string catName = 1;
+    string dbName = 2;
+    string tblName = 3;
+}
+
+message GetTableResponse {
+    int32 code = 1;
+    string msg = 2;
+    int32 tableID = 3;
+    // reuse avro schema declaration: 
+    //   https://avro.apache.org/docs/1.11.1/specification/#schema-declaration
+    string table = 4;
+}
+
+message InsertRequest {
+    int32 tableID = 1;
+    string partitoinID = 2;
+    // reuse avro data serialization: 
+    //   https://avro.apache.org/docs/1.11.1/specification/#data-serialization-and-deserialization
+    bytes records = 3;
+}
+
+message LookupRequest {
+    int32 tableID = 1;
+    string partitoinID = 2;
+    string primaryKey = 3; //TODO: different data types
+}
+
+message LookupResponse {
+    int32 code = 1;
+    string msg = 2;
+    bytes record = 3;
+}
+
+message Partition {
+    string partitionID = 1;
+    int64 scanHandler = 2;
+    // only implement 'client_merge' policy first
+    int32 mergePolicy = 3; // 0：none_merge, 1：client_merge, 2：server_merge
+    repeated string mainPaths = 4;
+}
+message MainAccount {
+    int32 accountType = 1; // 1：S3, 2：HDFS
+    string username = 2;
+    string token = 3;
+}
+
+message ScanInfo {
+    repeated Partition partitions = 1;
+    MainAccount mainAccount = 2; // just return from meta server
+}
+
+message PrepareScanRequest {
+    int32 tableID = 1;
+    repeated Executor executors = 2;
+}
+
+message PrepareScanResponse {
+    int32 code = 1;
+    string msg = 2;
+    ScanInfo scanInfo = 3;
+}
+
+message ScanRequest {
+    string partitionID = 1;
+    int64 scanHandler = 2;
+    //TODO: more
+}
+
+message ScanResponse {
+    int32 code = 1;
+    string msg = 2;
+    bytes records = 3; // new and updated records, serialized in avro
+    bytes deleteRecords = 4; // delete records, serialized in avro
+}
+
+service TarimMeta {
+
+    rpc getTable(GetTableRequest) returns (GetTableResponse);
+
+    // call: client -> TarimMeta::prepareScan -> TarimDB::prepareScan
+    rpc prepareScan(PrepareScanRequest) returns (PrepareScanResponse);
+}
 
 service Tarim {
+
+    rpc insert(InsertRequest) returns (StatusResponse);
+
+    rpc lookup(LookupRequest) returns (LookupResponse);
+
+    //rpc delete(DeleteRequest) returns (DeleteResponse); //TODO
+
+    rpc prepareScan(PrepareScanRequest) returns (PrepareScanResponse);
+
+    rpc scan(ScanRequest) returns (ScanResponse);
 }
 

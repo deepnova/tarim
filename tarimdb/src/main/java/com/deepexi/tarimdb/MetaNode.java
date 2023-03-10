@@ -1,7 +1,6 @@
 package com.deepexi.tarimdb;
 
 import io.grpc.Server;
-import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
@@ -14,6 +13,7 @@ import com.deepexi.tarimdb.util.Status;
 import com.deepexi.tarimdb.tarimkv.TarimKVMeta;
 import com.deepexi.tarimdb.tarimkv.KVMetadata;
 import com.deepexi.tarimdb.tarimkv.YamlLoader;
+import com.deepexi.tarimdb.datamodels.TarimDBMeta;
 
 /**
  * MetaNode
@@ -42,8 +42,10 @@ public class MetaNode extends AbstractNode {
     public Status start() {
 
         try{
-            server = ServerBuilder.forPort(port).addService(new TarimKVMeta(metadata))
-                .build().start();
+            ServerBuilder builder = ServerBuilder.forPort(port);
+            builder.addService(new TarimKVMeta(metadata));
+            builder.addService(new TarimDBMeta(/*metadata*/));
+            server = builder.build().start();
             logger.info("service start...");
 
             //添加停机逻辑
@@ -59,9 +61,6 @@ public class MetaNode extends AbstractNode {
         } catch(IOException e){
             logger.error("MetaNode start error(IOException)");
             return Status.SERVER_START_FAILED;
-        //} catch(InterruptedException e){
-        //    logger.error("MetaNode start error(InterruptedException)");
-        //    return Status.SERVER_START_FAILED;
         }
 
         return Status.OK;

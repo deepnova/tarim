@@ -222,12 +222,12 @@ public class TarimKVLocal {
             String keyPrefix = KeyValueCodec.ChunkOnlyKeyPrefixEncode(chunks[i]);
             chunkDetail.scanHandler = slot.prepareScan(cfh, keyPrefix);
             chunkDetail.mergePolicy = 1;
-            chunkDetail.mainPath = lMetadata.mainPath; //TODO: may too long
+            chunkDetail.mainPaths.add(lMetadata.mainPath); //TODO: may too long
             //TODO: different chunks may in same slot, should return the same snapshot
             logger.info("prepareChunkScan(), ColumnFamilyHandle name: " + cfh.getName() 
                       + ", chunkID: " + chunks[i]
                       + ", scanHandler: " + chunkDetail.scanHandler
-                      + ", mainPath: " + chunkDetail.mainPath);
+                      + ", mainPaths: " + chunkDetail.mainPaths.toString());
             scanInfo.chunkDetails.add(chunkDetail);
         }
 
