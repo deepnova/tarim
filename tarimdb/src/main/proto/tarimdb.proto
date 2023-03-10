@@ -62,7 +62,7 @@ message MainAccount {
 
 message ScanInfo {
     repeated Partition partitions = 1;
-    MainAccount mainAccount = 2;
+    MainAccount mainAccount = 2; // just return from meta server
 }
 
 message PrepareScanRequest {
@@ -90,14 +90,23 @@ message ScanResponse {
 }
 
 service TarimMeta {
+
     rpc getTable(GetTableRequest) returns (GetTableResponse);
+
+    // call: client -> TarimMeta::prepareScan -> TarimDB::prepareScan
+    rpc prepareScan(PrepareScanRequest) returns (PrepareScanResponse);
 }
 
 service Tarim {
+
     rpc insert(InsertRequest) returns (StatusResponse);
+
     rpc lookup(LookupRequest) returns (LookupResponse);
+
     //rpc delete(DeleteRequest) returns (DeleteResponse); //TODO
+
     rpc prepareScan(PrepareScanRequest) returns (PrepareScanResponse);
+
     rpc scan(ScanRequest) returns (ScanResponse);
 }
 

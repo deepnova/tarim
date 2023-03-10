@@ -1,6 +1,6 @@
 package com.deepexi.tarimdb.tarimkv;
 
-import com.google.protobuf.ByteString;
+//import com.google.protobuf.ByteString;
 import io.grpc.stub.StreamObserver;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

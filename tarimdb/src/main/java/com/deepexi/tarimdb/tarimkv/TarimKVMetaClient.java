@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import com.deepexi.rpc.TarimKVMetaGrpc;
 import com.deepexi.rpc.TarimKVProto;
-import com.google.protobuf.ByteString;
+//import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.apache.commons.codec.digest.MurmurHash3;
