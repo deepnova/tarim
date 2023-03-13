@@ -3,6 +3,7 @@ package com.deepexi.tarimdb;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
+import org.rocksdb.RocksDBException;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import org.apache.logging.log4j.LogManager;
@@ -43,6 +44,8 @@ class TarimDBMetaTest {
             logger.info("TarimDB meta service start...");
         } catch(IOException e){
             logger.error("TarimDBMetaTest start error(IOException)");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 

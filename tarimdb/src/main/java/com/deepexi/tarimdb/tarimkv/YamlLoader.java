@@ -72,6 +72,7 @@ public class YamlLoader {
                 nodeBuiler.addSlots(i, slotBuiler.build());
             }
             metadata.dnodes.add(nodeBuiler.build());
+            nodeBuiler.clear();
         }
 
         objs = (List<Map<String,Object>>) obj.get("rgroups");
@@ -121,6 +122,9 @@ public class YamlLoader {
         metadata.mnodes = new ArrayList();
         metadata.slots = new ArrayList();
 
+        //init ,or else it will be nullptr
+        metadata.mainAccount = new KVSchema.MainAccount();
+
         TarimKVProto.Node.Builder nodeBuiler = TarimKVProto.Node.newBuilder();
         TarimKVProto.Slot.Builder slotBuiler = TarimKVProto.Slot.newBuilder();
 
@@ -145,11 +149,12 @@ public class YamlLoader {
         }
 
         Map<String,Object> account = (Map<String,Object>) obj.get("mainAccount");
+
         metadata.mainAccount.accountType  = Integer.valueOf(account.get("accountType").toString());
         metadata.mainAccount.username = account.get("username").toString();
         metadata.mainAccount.token = account.get("token").toString();
 
-        metadata.mainPath = account.get("mainPath").toString();
+        metadata.mainPath = obj.get("mainPath").toString();
 
         logger.debug("local metadata: " + metadata.toString());
 
