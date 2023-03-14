@@ -32,6 +32,10 @@ public class TarimDBMeta extends TarimMetaGrpc.TarimMetaImplBase {
         //logger.debug("TarimDBMeta constructor, metadata: " + metadata.toString());
     }
 
+    public TarimDBMeta() {
+
+    }
+
     public void getTable(TarimProto.GetTableRequest request, 
                          StreamObserver<TarimProto.GetTableResponse> responseObserver) 
     {

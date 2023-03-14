@@ -60,6 +60,7 @@ public class TarimServer {
                 node.init();
                 node.start();
                 logger.debug( "DataNode end!" );
+                node.blockUntilShutdown();
             }else if(bconf.mode.equals(BasicConfig.METANODE)){
                 MetaNode node = new MetaNode(bconf);
                 node.init();

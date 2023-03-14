@@ -93,7 +93,31 @@
 
     
     </dependencies>
-
+    <repositories>
+        <repository>
+            <id>alimaven</id>
+            <name>aliyun maven</name>
+            <url>http://maven.aliyun.com/nexus/content/groups/public/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>depick1</id>
+            <name>Tarim Repo</name>
+            <url>http://nexus.deepexi.com/repository/tarim-dev-release/</url>
+            <releases>
+                <enabled>true</enabled>
+                <updatePolicy>always</updatePolicy>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
     <build>
 
         <extensions>
@@ -106,10 +130,10 @@
 
         <plugins>
 
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
+<!--            <plugin>-->
+<!--                <groupId>org.springframework.boot</groupId>-->
+<!--                <artifactId>spring-boot-maven-plugin</artifactId>-->
+<!--            </plugin>-->
 
             <plugin>
               <groupId>org.xolstice.maven.plugins</groupId>
@@ -129,7 +153,73 @@
                 </execution>
               </executions>
             </plugin>
+                <!-- 打包jar文件时，配置manifest文件，加入lib包的jar依赖 -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>2.6</version>
+                    <configuration>
+                        <classesDirectory>target/classes/</classesDirectory>
+                        <archive>
+                            <manifest>
+                                <mainClass>com.deepexi.tarimdb.TarimServer</mainClass>
+                                <!-- 打包时 MANIFEST.MF文件不记录的时间戳版本 -->
+                                <useUniqueVersions>false</useUniqueVersions>
+                                <addClasspath>true</addClasspath>
+                                <classpathPrefix>crm-lib/</classpathPrefix>
+                            </manifest>
+                            <manifestEntries>
+                                <Class-Path>.</Class-Path>
+                            </manifestEntries>
+                        </archive>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-dependency-plugin</artifactId>
+                    <executions>
+                        <execution>
+                            <id>copy-dependencies</id>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>copy-dependencies</goal>
+                            </goals>
+                            <configuration>
+                                <type>jar</type>
+                                <includeTypes>jar</includeTypes>
+                                <outputDirectory>
+                                    ${project.build.directory}/crm-lib
+                                </outputDirectory>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
 
+<!--            <plugin>-->
+<!--                <groupId>org.apache.maven.plugins</groupId>-->
+<!--                <artifactId>maven-shade-plugin</artifactId>-->
+<!--                <version>3.2.0</version>-->
+<!--                <configuration>-->
+<!--                    <createDependencyReducedPom>true</createDependencyReducedPom>-->
+<!--                </configuration>-->
+<!--                <executions>-->
+<!--                    <execution>-->
+<!--                        <id>shade-my-jar</id>-->
+<!--                        <phase>package</phase>-->
+<!--                        <goals>-->
+<!--                            <goal>shade</goal>-->
+<!--                        </goals>-->
+<!--                        <configuration>-->
+<!--                            <transformers>-->
+<!--                                <transformer-->
+<!--                                        implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">-->
+<!--                                    <mainClass>com.deepexi.tarimdb.TarimServer</mainClass>-->
+<!--                                </transformer>-->
+<!--                            </transformers>-->
+<!--                        </configuration>-->
+<!--                    </execution>-->
+<!--                </executions>-->
+<!--            </plugin>-->
         </plugins>
 
     </build>
