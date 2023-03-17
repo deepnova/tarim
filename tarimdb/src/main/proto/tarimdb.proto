@@ -29,6 +29,19 @@ message GetTableResponse {
     repeated string paritionKeys = 6;
     map<string, string> properties = 7;
     string comment = 8;
+    PartitionSpec partitionSpec = 9;
+}
+
+message PartitionSpec {
+    int32 specID = 1;
+    repeated Fields fields = 2;
+}
+
+message Fields {
+    string name = 1;
+    string transform = 2;
+    int32 sourceID = 3;
+    int32 filedID = 4;
 }
 
 message InsertRequest {

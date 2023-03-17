@@ -6,10 +6,19 @@ import org.apache.flink.streaming.api.operators.ChainingStrategy;
 import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 
+import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.data.RowData;
+import org.apache.flink.table.types.logical.RowType;
+import org.apache.iceberg.PartitionKey;
+import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 
+import org.apache.iceberg.flink.RowDataWrapper;
+
 import org.apache.iceberg.relocated.com.google.common.base.MoreObjects;
+import org.apache.iceberg.relocated.com.google.common.collect.Maps;
+import org.deepexi.ConnectorTarimTable;
 import org.deepexi.TarimDbAdapt;
 import org.deepexi.WResult;
 import org.slf4j.Logger;
@@ -18,6 +27,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
+import static org.deepexi.sink.TarimSink.Builder.toFlinkRowType;
 
 public class TarimStreamWriter<T> extends AbstractStreamOperator<WResult>
         implements OneInputStreamOperator<T, WResult>, BoundedOneInput {
@@ -61,8 +73,25 @@ public class TarimStreamWriter<T> extends AbstractStreamOperator<WResult>
     @Override
     public void processElement(StreamRecord<T> element) throws Exception {
         LOG.info("stream-processElement" + element.getValue().toString());
+
+        final Map<PartitionKey, String> writers = Maps.newHashMap();
+
+
         //writer.write(element.getValue());
         if (element != null){
+            PartitionSpec partitionSpec = table.spec();
+            Schema schema = table.schema();
+            TableSchema flinkSchema =((ConnectorTarimTable)table).getFlinkSchema();
+            PartitionKey partitionKey = new PartitionKey(partitionSpec,schema);
+
+            RowType flinkRowType = toFlinkRowType(schema, flinkSchema);
+            RowDataWrapper wrapper = new RowDataWrapper(flinkRowType, schema.asStruct());
+
+            partitionKey.partition(wrapper.wrap((RowData) element.getValue()));
+
+            String partitionForChunk = partitionSpec.partitionToPath(partitionKey);
+
+            System.out.println("chunk:" + partitionForChunk);
             dataList.add(element.getValue().toString());
             dataIndex++;
 

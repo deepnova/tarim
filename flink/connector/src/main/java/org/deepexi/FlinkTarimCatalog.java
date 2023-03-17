@@ -134,41 +134,18 @@ public class FlinkTarimCatalog extends AbstractCatalog {
     }
 
     static CatalogTable toCatalogTable(Table table) {
-        return toCatalogTable(table, table.properties());
+        return toCatalogTable(table.properties(), ((ConnectorTarimTable)table).getFlinkSchema(), ((ConnectorTarimTable)table).getPartitionKey());
     }
 
-    static CatalogTable toCatalogTable(Table table, Map<String, String> properties) {
+    static CatalogTable toCatalogTable(Map<String, String> properties,TableSchema schema, List<String> partitionKeys) {
 
-        //new a fix schema for test
-        /*
-        TypeInformation<?>[] types = new TypeInformation[]{
-                STRING_TYPE_INFO,
-                INT_TYPE_INFO,
-                STRING_TYPE_INFO
-        };
-
-        String[] names = new String[]{
-           "currency",
-           "userid",
-           "test1"
-        };
-        */
-
-        TypeInformation<?>[] types = new TypeInformation[]{
-                STRING_TYPE_INFO,
-                INT_TYPE_INFO,
-        };
-
-        String[] names = new String[]{
-                "class",
-                "userid",
-        };
-
-        TableSchema schema = new TableSchema(names, types);
-        List<String> partitionKeys = new ArrayList<>();
-        Map<String, String> tmpProps = new HashMap<>();
-
-        return new CatalogTableImpl(schema, partitionKeys, tmpProps, null);
+        //options should not be null, check it first, set a default properties
+        if (properties == null){
+            Map<String, String> defaultProp = ImmutableMap.of("tarim","tarim");
+            return new CatalogTableImpl(schema, partitionKeys, defaultProp, null);
+        }else{
+            return new CatalogTableImpl(schema, partitionKeys, properties, null);
+        }
     }
     @Override
     public CatalogBaseTable getTable(ObjectPath tablePath) throws TableNotExistException, CatalogException {
