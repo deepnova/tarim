@@ -1,15 +1,21 @@
 package org.deepexi;
 
-import org.apache.iceberg.PartitionSpec;
-import org.apache.iceberg.Schema;
-import org.apache.iceberg.Table;
-import org.apache.iceberg.Transaction;
+import com.deepexi.rpc.TarimProto;
+import org.apache.flink.table.api.TableSchema;
+
+import org.apache.iceberg.*;
+import org.apache.iceberg.avro.AvroSchemaUtil;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+
+import org.codehaus.jettison.json.JSONArray;
+import org.codehaus.jettison.json.JSONObject;
 
 public class ConnectorTarimCatalog implements Catalog {
 
@@ -110,8 +116,82 @@ public class ConnectorTarimCatalog implements Catalog {
 
     @Override
     public Table loadTable(TableIdentifier tableIdentifier) {
-        //todo, to TarimDB
-        return new ConnectorTarimTable(tableIdentifier.name());
+
+        //todo :tmp ip and port
+        final String host = "127.0.0.1";
+        final int port = 1301;
+
+        String tableName = tableIdentifier.name();
+        String DbName;
+        Namespace nameSpace = tableIdentifier.namespace();
+        try{
+            DbName = nameSpace.level(0);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        MetaClient metaClient = new MetaClient(host, port);
+
+        TarimProto.GetTableResponse  response = metaClient.loadTableRequest(catalogName, DbName, tableName);
+        try{
+            if (response.getCode() != 0){
+                return null;
+
+            }else{
+                String tarimTableSchema = response.getTable();
+
+                org.apache.iceberg.shaded.org.apache.avro.Schema schema = new org.apache.iceberg.shaded.org.apache.avro.Schema.Parser().parse(tarimTableSchema);
+
+                TableSchema.Builder builder = new TableSchema.Builder();
+
+                for ( org.apache.iceberg.shaded.org.apache.avro.Schema.Field fieid : schema.getFields()){
+                    builder.field(fieid.name(), TarimTypeToFlinkType.convertToDataType(fieid.schema().toString()).notNull());
+                }
+
+                builder.primaryKey(response.getPrimaryKey());
+
+                List<String> partitionKey = new ArrayList<>();
+                if (response.getParitionKeysCount() > 0) {
+                    //todo, support one key for test now
+                    partitionKey.add(response.getParitionKeys(0));
+                }
+
+                TableSchema tableSchema = builder.build();
+                Schema icebergSchema = AvroSchemaUtil.toIceberg(schema);
+
+                //can not use jasonFormat, because the key is different between iceberg and grpc-protobuf-message
+                //TarimProto.PartitionSpecOrBuilder specMessage = response.getPartitionSpecOrBuilder();
+                //String json = JsonFormat.printer().print(specMessage);
+
+                JSONObject fieldObj = new JSONObject();
+
+                JSONArray array = new JSONArray();
+                JSONObject fieldSpec = new JSONObject();
+
+                int i = 0;
+                for (TarimProto.Fields fields: response.getPartitionSpec().getFieldsList()){
+
+                    fieldObj.put("name", fields.getName());
+                    fieldObj.put("transform", fields.getTransform());
+                    fieldObj.put("source-id", fields.getSourceID());
+                    fieldObj.put("field-id", fields.getFiledID());
+
+                    array.put(i, fieldObj);
+                    i++;
+                }
+
+                fieldSpec.put("spec-id", response.getPartitionSpec().getSpecID());
+                fieldSpec.put("fields", array);
+                String jsonString = fieldSpec.toString();
+                PartitionSpec  partitionSpec = PartitionSpecParser.fromJson(icebergSchema, jsonString);
+
+                return new ConnectorTarimTable(tableIdentifier.name(), response.getTableID(), tableSchema, partitionKey, partitionSpec, icebergSchema);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+
     }
 
     @Override

@@ -18,6 +18,7 @@
         <scala.binary.version>2.12</scala.binary.version>
         <flink.version>1.14.3</flink.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <grpc.version>1.52.1</grpc.version>
     </properties>
 
     <dependencies>
@@ -25,11 +26,6 @@
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-streaming-java_2.12</artifactId>
             <version>${flink.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.minio</groupId>
-            <artifactId>minio</artifactId>
-            <version>7.1.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
@@ -65,16 +61,6 @@
         <!--            <artifactId>flink-table-planner-blink_2.12</artifactId>-->
         <!--            <version>${flink.version}</version>-->
         <!--        </dependency>-->
-        <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-table-planner_2.12</artifactId>
-            <version>${flink.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>42.2.5</version>
-        </dependency>
 
         <dependency>
             <groupId>org.apache.flink</groupId>
@@ -83,53 +69,12 @@
         </dependency>
 
         <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-connector-jdbc_2.12</artifactId>
-            <version>${flink.version}</version>
+            <groupId>org.apache.iceberg</groupId>
+            <artifactId>iceberg-flink-runtime-1.14</artifactId>
+            <version>0.13.1-2.2.0-rc2</version>
         </dependency>
 
-        <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-sql-connector-kafka_2.12</artifactId>
-            <version>${flink.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-connector-kafka_2.12</artifactId>
-            <version>${flink.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-json</artifactId>
-            <version>${flink.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iceberg</groupId>
-            <artifactId>iceberg-flink</artifactId>
-            <!--            <version>0.18.0</version>-->
-            <version>0.14.0</version>
-            <scope>system</scope>
-            <!--            <systemPath>D:/JavaCode/iceberg-apache-iceberg-0.12.0/flink-runtime/build/libs/iceberg-flink-runtime-0.18.0.jar</systemPath>-->
-            <systemPath>
-                /usr/local/wpf/iceberg-flink-runtime-1.14-0.13.1.jar
-            </systemPath>
-            <!--            <systemPath>D:/JavaCode/icebergtest/flink/v1.13/flink-runtime/build/libs/iceberg-flink-1.13-runtime-0.13.0-SNAPSHOT.jar</systemPath>-->
-        </dependency>
-        <dependency>
-            <groupId>ru.yandex.clickhouse</groupId>
-            <artifactId>clickhouse-jdbc</artifactId>
-            <version>0.2.4</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.thrift</groupId>
-            <artifactId>libthrift</artifactId>
-            <version>0.9.3</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.hive</groupId>
-            <artifactId>hive-metastore</artifactId>
-            <version>3.1.2</version>
-        </dependency>
+
         <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-common</artifactId>
@@ -141,27 +86,87 @@
                 </exclusion>
             </exclusions>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/org.apache.flink/flink-runtime-web -->
+
         <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-runtime-web_2.12</artifactId>
-            <version>${flink.version}</version>
-        </dependency>
-        <!-- https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-client -->
-        <dependency>
-            <groupId>org.apache.hadoop</groupId>
-            <artifactId>hadoop-client</artifactId>
-            <version>2.7.2</version>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-stub</artifactId>
+            <version>${grpc.version}</version>
         </dependency>
         <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
-            <version>8.0.19</version>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.5.1</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-dbcp2</artifactId>
-            <version>2.1.1</version>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-netty-shaded</artifactId>
+            <version>${grpc.version}</version>
+<!--            <scope>runtime</scope>-->
+        </dependency>
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-protobuf</artifactId>
+            <version>${grpc.version}</version>
+        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.deepexi</groupId>-->
+<!--            <artifactId>tarimdb</artifactId>-->
+<!--            <version>0.0.1-SNAPSHOT</version>-->
+<!--            <scope>compile</scope>-->
+<!--        </dependency>-->
+        <dependency>
+            <groupId>com.deepexi</groupId>
+            <artifactId>tarimdb</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+            <scope>system</scope>
+            <systemPath>
+                /usr/local/wpf/code/wpf_tarim/tarimdb/target/tarimdb-0.0.1-SNAPSHOT.jar
+            </systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java-util</artifactId>
+            <version>3.21.1</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
+
+    <repositories>
+        <repository>
+            <id>alimaven</id>
+            <name>aliyun maven</name>
+            <url>http://maven.aliyun.com/nexus/content/groups/public/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>depick1</id>
+            <name>Tarim Repo</name>
+            <url>http://nexus.deepexi.com/repository/tarim-dev-release/</url>
+            <releases>
+                <enabled>true</enabled>
+                <updatePolicy>always</updatePolicy>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>9</source>
+                    <target>9</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

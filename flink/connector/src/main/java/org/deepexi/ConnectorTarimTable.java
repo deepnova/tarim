@@ -1,5 +1,6 @@
 package org.deepexi;
 
+import org.apache.flink.table.api.TableSchema;
 import org.apache.iceberg.*;
 import org.apache.iceberg.encryption.EncryptionManager;
 import org.apache.iceberg.io.FileIO;
@@ -10,9 +11,33 @@ import java.util.List;
 import java.util.Map;
 
 public class ConnectorTarimTable implements Table, Serializable {
-    String name;
-    ConnectorTarimTable(String name){
+    private String name;
+    private int tableId;
+    private TableSchema flinkSchema;
+
+    private List<String> partitionKey;
+
+    private PartitionSpec partitionSpec;
+    private Schema schema;
+    public ConnectorTarimTable(String name){
         this.name = name;
+    }
+
+    public ConnectorTarimTable(String name, int tableId, TableSchema flinkSchema, List<String> partitionKey, PartitionSpec partitionSpec, Schema schema){
+        this.name = name;
+        this.tableId = tableId;
+        this.flinkSchema = flinkSchema;
+        this.partitionKey = partitionKey;
+        this.partitionSpec = partitionSpec;
+        this.schema = schema;
+    }
+
+    public TableSchema getFlinkSchema(){
+        return flinkSchema;
+    }
+
+    public List<String> getPartitionKey(){
+        return partitionKey;
     }
 
     @Override
@@ -27,7 +52,7 @@ public class ConnectorTarimTable implements Table, Serializable {
 
     @Override
     public Schema schema() {
-        return null;
+        return this.schema;
     }
 
     @Override
@@ -37,7 +62,7 @@ public class ConnectorTarimTable implements Table, Serializable {
 
     @Override
     public PartitionSpec spec() {
-        return null;
+        return this.partitionSpec;
     }
 
     @Override
