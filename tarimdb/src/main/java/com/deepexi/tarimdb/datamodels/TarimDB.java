@@ -1,6 +1,7 @@
 package com.deepexi.tarimdb.datamodels;
 
 import com.deepexi.rpc.TarimKVProto;
+import com.deepexi.tarimdb.util.Common;
 import com.deepexi.tarimdb.util.TarimKVException;
 import com.google.protobuf.ByteString;
 import org.apache.avro.generic.GenericDatumReader;
@@ -54,14 +55,7 @@ public class TarimDB extends AbstractDataModel {
         BinaryDecoder decoder = new DecoderFactory().directBinaryDecoder(bytesIS, null);
         GenericDatumReader<GenericRecord> reader = new GenericDatumReader<>();
         //todo schemaJson should be create from the metaNode
-        String schemaJson = "{\"namespace\": \"org.apache.arrow.avro\","
-                + "\"type\": \"record\","
-                + "\"name\": \"TarimRecord\","
-                + "\"fields\": ["
-                + "{\"name\": \"userID\", \"type\": \"int\"},"
-                + "    {\"name\": \"age\", \"type\": \"int\"},"
-                + "    {\"name\": \"class\", \"type\": \"string\"}"
-                + "]}";
+        String schemaJson = Common.loadTableMeta("tablemeta.json");
         org.apache.avro.Schema schema = new org.apache.avro.Schema.Parser().parse(schemaJson);
 
         reader.setSchema(schema);
