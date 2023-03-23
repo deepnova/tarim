@@ -1,0 +1,19 @@
+{
+  "namespace":"org.apache.arrow.avro",
+  "type":"record",
+  "name":"TarimRecord",
+  "fields":[
+    {
+      "name":"userID",
+      "type":"int"
+    },
+    {
+      "name":"age",
+      "type":"int"
+    },
+    {
+      "name":"class",
+      "type":"string"
+    }
+  ]
+}

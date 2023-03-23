@@ -1,5 +1,6 @@
 package com.deepexi.tarimdb.datamodels;
 
+import com.deepexi.tarimdb.tarimkv.YamlLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import com.deepexi.tarimdb.tarimkv.KVMetadata;
@@ -9,6 +10,8 @@ import com.deepexi.rpc.TarimMetaGrpc;
 import com.deepexi.rpc.TarimProto;
 import org.rocksdb.RocksDBException;
 
+import java.io.InputStream;
+import java.util.Scanner;
 
 /**
  * TarimDBMeta
@@ -42,17 +45,11 @@ public class TarimDBMeta extends TarimMetaGrpc.TarimMetaImplBase {
         respBuilder.setCode(0);
         respBuilder.setMsg("OK");
         respBuilder.setTableID(100);
-
-        respBuilder.setTable("{\"namespace\": \"org.apache.arrow.avro\","
-                        + "\"type\": \"record\","
-                        + "\"name\": \"TarimRecord\","
-                        + "\"fields\": ["
-                        + "{\"name\": \"userID\", \"type\": \"int\"},"
-                        + "    {\"name\": \"age\", \"type\": \"int\"},"
-                        + "    {\"name\": \"class\", \"type\": \"string\"}"
-                        + "]}");
-
-
+        try {
+            respBuilder.setTable(loadTableMeta());
+        }catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("The table meta is incorrect!");
+        }
 
         respBuilder.setPrimaryKey("userID");
         respBuilder.addParitionKeys("class");
@@ -77,6 +74,20 @@ public class TarimDBMeta extends TarimMetaGrpc.TarimMetaImplBase {
                             StreamObserver<TarimProto.PrepareScanResponse> responseObserver) 
     {
         //TODO
+    }
+
+    public String loadTableMeta(){
+        InputStream inputStream = YamlLoader.class
+                .getClassLoader()
+                .getResourceAsStream("tablemeta.json");
+
+        String jsonString = null;
+
+        try (Scanner scanner = new Scanner(inputStream)) {
+            jsonString = scanner.useDelimiter("\\A").next();
+        }
+
+        return jsonString;
     }
 }
 
