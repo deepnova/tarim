@@ -19,7 +19,6 @@
         <flink.version>1.14.3</flink.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <grpc.version>1.52.1</grpc.version>
-        <iceberg.systempath>/usr/local/wpf/iceberg-flink-runtime-1.14-0.13.1.jar</iceberg.systempath>
     </properties>
 
     <dependencies>
@@ -76,15 +75,8 @@
 
         <dependency>
             <groupId>org.apache.iceberg</groupId>
-            <artifactId>iceberg-flink</artifactId>
-            <!--            <version>0.18.0</version>-->
-            <version>0.14.0</version>
-            <scope>system</scope>
-            <!--            <systemPath>D:/JavaCode/iceberg-apache-iceberg-0.12.0/flink-runtime/build/libs/iceberg-flink-runtime-0.18.0.jar</systemPath>-->
-            <systemPath>
-                ${iceberg.systempath}
-            </systemPath>
-            <!--            <systemPath>D:/JavaCode/icebergtest/flink/v1.13/flink-runtime/build/libs/iceberg-flink-1.13-runtime-0.13.0-SNAPSHOT.jar</systemPath>-->
+            <artifactId>iceberg-flink-runtime-1.14</artifactId>
+            <version>0.13.1-2.2.0-rc2</version>
         </dependency>
 
 
@@ -143,6 +135,33 @@
             <scope>compile</scope>
         </dependency>
     </dependencies>
+
+    <repositories>
+        <repository>
+            <id>alimaven</id>
+            <name>aliyun maven</name>
+            <url>http://maven.aliyun.com/nexus/content/groups/public/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+        <repository>
+            <id>depick1</id>
+            <name>Tarim Repo</name>
+            <url>http://nexus.deepexi.com/repository/tarim-dev-release/</url>
+            <releases>
+                <enabled>true</enabled>
+                <updatePolicy>always</updatePolicy>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
     <build>
         <plugins>
             <plugin>
