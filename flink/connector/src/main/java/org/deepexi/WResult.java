@@ -5,11 +5,14 @@ import java.util.List;
 
 public class WResult implements Serializable {
     public WResult(){}
-    public List<String> strList;
+    private List<byte[]> addDataList;
 
-    public WResult(List<String> strList) {
-        this.strList = strList;
+    public WResult(List<byte[]> addDataList) {
+        this.addDataList = addDataList;
     }
 
+    public List<byte[]> getDataList(){
+        return addDataList;
+    }
 
 }

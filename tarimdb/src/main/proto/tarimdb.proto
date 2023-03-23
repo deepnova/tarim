@@ -7,10 +7,10 @@ option java_outer_classname = "TarimProto";//最外层类名称
 import "executor.proto";
 import "tarimkv.proto";
 
-//message StatusResponse {
-//    int32 code = 1;
-//    string msg = 2;
-//}
+message DbStatusResponse {
+    int32 code = 1;
+    string msg = 2;
+}
 
 message GetTableRequest {
     string catName = 1;
@@ -47,9 +47,10 @@ message Fields {
 message InsertRequest {
     int32 tableID = 1;
     string partitoinID = 2;
+    string primaryKey = 3; // clumn name of table
     // reuse avro data serialization: 
     //   https://avro.apache.org/docs/1.11.1/specification/#data-serialization-and-deserialization
-    bytes records = 3;
+    bytes records = 4;
 }
 
 message LookupRequest {
@@ -116,7 +117,7 @@ service TarimMeta {
 
 service Tarim {
 
-    rpc insert(InsertRequest) returns (StatusResponse);
+    rpc insert(InsertRequest) returns (DbStatusResponse);
 
     rpc lookup(LookupRequest) returns (LookupResponse);
 

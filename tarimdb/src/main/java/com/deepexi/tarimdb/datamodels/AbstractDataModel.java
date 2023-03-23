@@ -25,6 +25,9 @@ public abstract class AbstractDataModel extends Thread {
         return Status.OK;
     }
 
+    public TarimKVClient getTarimKVClient(){
+        return this.kv;
+    }
     @Override
     public void start() {
         /*logger.info("Starting thread: " +  getName());

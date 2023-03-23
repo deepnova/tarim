@@ -19,10 +19,13 @@ import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
 import org.apache.iceberg.types.TypeUtil;
 
+import org.deepexi.ConnectorTarimTable;
+import org.deepexi.SerializableTarimTable;
 import org.deepexi.WResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -74,16 +77,15 @@ public class TarimSink{
 
             DataStream<RowData> rowDataInput = inputCreator.apply(uidPrefix);
 
-
             // Convert the requested flink table schema to flink row type.
-            //RowType flinkRowType = toFlinkRowType(table.schema(), tableSchema);
+            RowType flinkRowType = toFlinkRowType(table.schema(), tableSchema);
 
             // Distribute the records from input data stream based on the write.distribution-mode.
             DataStream<RowData> distributeStream = distributeDataStream(
                     rowDataInput, table.properties(), null, null, null);
 
             // Add parallel writers that append rows to files
-            SingleOutputStreamOperator<WResult> writerStream = appendWriter(distributeStream, null);
+            SingleOutputStreamOperator<WResult> writerStream = appendWriter(distributeStream, flinkRowType);
 
             // Add single-parallelism committer that commits files
             // after successful checkpoint or end of input
@@ -216,7 +218,8 @@ public class TarimSink{
             }
 
             int parallelism = writeParallelism == null ? input.getParallelism() : writeParallelism;
-            TarimStreamWriter<RowData> streamWriter = createStreamWriter(table, parallelism);
+
+            TarimStreamWriter<RowData> streamWriter = createStreamWriter(table, flinkRowType, parallelism);
             SingleOutputStreamOperator<WResult> writerStream = input
                     .transform(operatorName(TARIM_STREAM_WRITER_NAME), TypeInformation.of(WResult.class), streamWriter)
                     .setParallelism(parallelism);
@@ -226,14 +229,15 @@ public class TarimSink{
             return writerStream;
         }
 
-        static TarimStreamWriter<RowData> createStreamWriter(Table table,
+        static TarimStreamWriter<RowData> createStreamWriter(Table table, RowType rowType,
                                                                int parallelism) {
             Preconditions.checkArgument(table != null, "Iceberg table should't be null");
             Map<String, String> props = table.properties();
+            SerializableTarimTable serializableTable = (SerializableTarimTable) SerializableTarimTable.copyOf((ConnectorTarimTable)table);
 
+            RowDataTaskWriterFactory writerFactory = new RowDataTaskWriterFactory(serializableTable, rowType, parallelism);
 
-
-            return new TarimStreamWriter<>(table.name(), table);
+            return new TarimStreamWriter<>(table.name(), writerFactory);
         }
 
         private <T> DataStreamSink<T> appendDummySink(SingleOutputStreamOperator<Void> committerStream) {

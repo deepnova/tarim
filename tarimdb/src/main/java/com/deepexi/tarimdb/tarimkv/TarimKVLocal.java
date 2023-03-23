@@ -1,11 +1,19 @@
 package com.deepexi.tarimdb.tarimkv;
 
+import java.io.ByteArrayInputStream;
+import java.io.EOFException;
+import java.io.IOException;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.Arrays;
 import com.google.protobuf.ByteString;
 import io.grpc.stub.StreamObserver;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericDatumReader;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.io.BinaryDecoder;
+import org.apache.avro.io.DecoderFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -57,7 +65,7 @@ public class TarimKVLocal {
             KVLocalMetadata.Node node = metaClient.getReplicaNode(slotID);
             if(node == null) throw new TarimKVException(Status.NULL_POINTER);
             logger.info("get replica node: " + node.toString());
-            if(node.host != lMetadata.address || node.port != lMetadata.port){
+            if(!node.host.equals(lMetadata.address)  || node.port != lMetadata.port){
                 if(refreshed == true){
                     throw new TarimKVException(Status.DISTRIBUTION_ERROR);
                 }
@@ -80,7 +88,7 @@ public class TarimKVLocal {
                   + ", chunkID: " + request.getChunkID()
                   + ", values count: " + request.getValuesCount());
         if(request.getTableID() > 0
-           && request.getChunkID() > 0 
+           //&& request.getChunkID() > 0
            && request.getValuesCount() > 0) {
            return;
         }
@@ -100,11 +108,11 @@ public class TarimKVLocal {
         WriteOptions writeOpt = new WriteOptions();
         WriteBatch batch = new WriteBatch();
         String key;
-        for(TarimKVProto.KeyValue kv : request.getValuesList()){
+        for(TarimKVProto.KeyValueByte kv : request.getValuesList()){
             key = KeyValueCodec.KeyEncode( new KeyValueCodec(request.getChunkID(), kv) );
             batch.put(cfh
                       ,key.getBytes()
-                      ,kv.getValue().getBytes());
+                      , kv.getValue().toByteArray());
             logger.info("for WriteBatch, key: " + key + ", value: " + kv.getValue());
         }
         slot.batchWrite(writeOpt, batch);
@@ -113,7 +121,7 @@ public class TarimKVLocal {
     private void validGetParam(GetRequest request) throws TarimKVException
     {
         if(request.getTableID() > 0
-           && request.getChunkID() > 0 
+           //&& request.getChunkID() > 0
            && request.getKeysCount() > 0) 
         {
            return;
@@ -182,7 +190,7 @@ public class TarimKVLocal {
     /**
      * only supported prefix seeks in a chunk, and return all result one time.
      */
-    public List<TarimKVProto.KeyValue> prefixSeek(PrefixSeekRequest request) 
+    public List<TarimKVProto.KeyValueByte> prefixSeek(PrefixSeekRequest request)
             throws RocksDBException, TarimKVException
     {
         validPrefixSeekParam(request);
@@ -192,7 +200,7 @@ public class TarimKVLocal {
 
         String keyPrefix = KeyValueCodec.KeyPrefixEncode(request.getChunkID(), request.getPrefix());
         ReadOptions readOpt = new ReadOptions();
-        List<TarimKVProto.KeyValue> values = slot.prefixSeek(readOpt, cfh, keyPrefix);
+        List<TarimKVProto.KeyValueByte> values = slot.prefixSeek(readOpt, cfh, keyPrefix);
         logger.info("prefixSeek(), chunkID: " + request.getChunkID()
                   + ", key prefix: " + keyPrefix
                   + ", result size: " + values.size());

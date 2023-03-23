@@ -1,6 +1,5 @@
 package com.deepexi.tarimdb;
 
-import java.lang.NullPointerException;
 import java.util.ArrayList;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -14,7 +13,7 @@ import com.deepexi.tarimdb.tarimkv.YamlLoader;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
-import io.grpc.stub.StreamObserver;
+
 import java.io.IOException;
 
 import com.deepexi.tarimdb.datamodels.*;
@@ -30,7 +29,7 @@ public class DataNode extends AbstractNode {
     private KVLocalMetadata lMetadata;
     private ArrayList<AbstractDataModel> models;
 
-    private int port = 1302;
+    private int port = 1303;
     private Server server;
 
     public DataNode(BasicConfig conf){
@@ -59,8 +58,9 @@ public class DataNode extends AbstractNode {
     public Status start(){ 
         logger.info("datanode run");
         try{
-            ServerBuilder builder = ServerBuilder.forPort(port);
-            builder.addService(new TarimDBServer());
+            ServerBuilder builder = ServerBuilder.forPort(lMetadata.port);
+            TarimDB db = (TarimDB) models.get(0);
+            builder.addService(new TarimDBServer(db));
             server = builder.build().start();
             logger.info("TarimDB service start...");
 
@@ -93,5 +93,6 @@ public class DataNode extends AbstractNode {
             server.shutdown();
         }
     }
+
 }
 

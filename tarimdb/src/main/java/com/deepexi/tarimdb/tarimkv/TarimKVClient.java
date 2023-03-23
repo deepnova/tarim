@@ -96,7 +96,7 @@ public class TarimKVClient {
         }
     }
     
-    public List<TarimKVProto.KeyValue> prefixSeek(PrefixSeekRequest request) throws TarimKVException 
+    public List<TarimKVProto.KeyValueByte> prefixSeek(PrefixSeekRequest request) throws TarimKVException
     {
         //TODO: write local or remote rocksdb here if necessary
         //TODO: check if distribution is correct. 

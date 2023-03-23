@@ -1,6 +1,7 @@
 package org.deepexi;
 
 import com.deepexi.rpc.TarimProto;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.table.api.TableSchema;
 
 import org.apache.iceberg.*;
@@ -10,12 +11,16 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONObject;
+
+import static org.apache.flink.api.common.typeinfo.BasicTypeInfo.INT_TYPE_INFO;
+import static org.apache.flink.api.common.typeinfo.BasicTypeInfo.STRING_TYPE_INFO;
 
 public class ConnectorTarimCatalog implements Catalog {
 
@@ -140,11 +145,11 @@ public class ConnectorTarimCatalog implements Catalog {
             }else{
                 String tarimTableSchema = response.getTable();
 
-                org.apache.iceberg.shaded.org.apache.avro.Schema schema = new org.apache.iceberg.shaded.org.apache.avro.Schema.Parser().parse(tarimTableSchema);
+                org.apache.iceberg.shaded.org.apache.avro.Schema avroSchema = new org.apache.iceberg.shaded.org.apache.avro.Schema.Parser().parse(tarimTableSchema);
 
                 TableSchema.Builder builder = new TableSchema.Builder();
 
-                for ( org.apache.iceberg.shaded.org.apache.avro.Schema.Field fieid : schema.getFields()){
+                for ( org.apache.iceberg.shaded.org.apache.avro.Schema.Field fieid : avroSchema.getFields()){
                     builder.field(fieid.name(), TarimTypeToFlinkType.convertToDataType(fieid.schema().toString()).notNull());
                 }
 
@@ -157,7 +162,7 @@ public class ConnectorTarimCatalog implements Catalog {
                 }
 
                 TableSchema tableSchema = builder.build();
-                Schema icebergSchema = AvroSchemaUtil.toIceberg(schema);
+                Schema icebergSchema = AvroSchemaUtil.toIceberg(avroSchema);
 
                 //can not use jasonFormat, because the key is different between iceberg and grpc-protobuf-message
                 //TarimProto.PartitionSpecOrBuilder specMessage = response.getPartitionSpecOrBuilder();
@@ -185,7 +190,7 @@ public class ConnectorTarimCatalog implements Catalog {
                 String jsonString = fieldSpec.toString();
                 PartitionSpec  partitionSpec = PartitionSpecParser.fromJson(icebergSchema, jsonString);
 
-                return new ConnectorTarimTable(tableIdentifier.name(), response.getTableID(), tableSchema, partitionKey, partitionSpec, icebergSchema);
+                return new ConnectorTarimTable(tableIdentifier.name(), response.getTableID(), tableSchema, partitionKey, partitionSpec, icebergSchema, tarimTableSchema, response.getPrimaryKey());
             }
         } catch (Exception e) {
             throw new RuntimeException(e);

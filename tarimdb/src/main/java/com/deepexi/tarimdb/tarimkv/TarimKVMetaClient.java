@@ -195,7 +195,8 @@ public class TarimKVMetaClient {
     }
     public String getMasterReplicaSlot(long chunkID) {
         long hash = MurmurHash3.hash32(chunkID);
-        logger.debug("chunkID: " + chunkID + ", hash: " + hash);
-        return getMasterReplicaSlotByHash(hash);
+        long unsignedHash = (hash & 0xFFFFFFFFL) & 0x00000000FFFFFFFFL;
+        logger.debug("chunkID: " + chunkID + ", hash: " + hash + ", unsigned:" + unsignedHash);
+        return getMasterReplicaSlotByHash(unsignedHash);
     }
 }
