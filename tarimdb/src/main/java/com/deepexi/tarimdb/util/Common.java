@@ -1,8 +1,12 @@
 package com.deepexi.tarimdb.util;
 
+import com.deepexi.tarimdb.tarimkv.YamlLoader;
+
+import java.io.InputStream;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Scanner;
 
 public class Common {
 
@@ -48,6 +52,20 @@ public class Common {
             if(src[i] != prefix[i]) return false;
         }
         return true;
+    }
+
+    public static String loadTableMeta(String fileName){
+        InputStream inputStream = YamlLoader.class
+                .getClassLoader()
+                .getResourceAsStream(fileName);
+
+        String jsonString = null;
+
+        try (Scanner scanner = new Scanner(inputStream)) {
+            jsonString = scanner.useDelimiter("\\A").next();
+        }
+
+        return jsonString;
     }
 }
 

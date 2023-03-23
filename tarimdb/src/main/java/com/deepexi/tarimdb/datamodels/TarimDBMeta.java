@@ -9,9 +9,8 @@ import io.grpc.stub.StreamObserver;
 import com.deepexi.rpc.TarimMetaGrpc;
 import com.deepexi.rpc.TarimProto;
 import org.rocksdb.RocksDBException;
+import com.deepexi.tarimdb.util.Common;
 
-import java.io.InputStream;
-import java.util.Scanner;
 
 /**
  * TarimDBMeta
@@ -46,7 +45,7 @@ public class TarimDBMeta extends TarimMetaGrpc.TarimMetaImplBase {
         respBuilder.setMsg("OK");
         respBuilder.setTableID(100);
         try {
-            respBuilder.setTable(loadTableMeta());
+            respBuilder.setTable(Common.loadTableMeta("tablemeta.json"));
         }catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("The table meta is incorrect!");
         }
@@ -76,18 +75,5 @@ public class TarimDBMeta extends TarimMetaGrpc.TarimMetaImplBase {
         //TODO
     }
 
-    public String loadTableMeta(){
-        InputStream inputStream = YamlLoader.class
-                .getClassLoader()
-                .getResourceAsStream("tablemeta.json");
-
-        String jsonString = null;
-
-        try (Scanner scanner = new Scanner(inputStream)) {
-            jsonString = scanner.useDelimiter("\\A").next();
-        }
-
-        return jsonString;
-    }
 }
 
