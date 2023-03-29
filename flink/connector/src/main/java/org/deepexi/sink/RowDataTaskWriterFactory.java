@@ -1,5 +1,6 @@
 package org.deepexi.sink;
 
+import com.deepexi.TarimMetaClient;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.iceberg.PartitionSpec;
@@ -19,7 +20,7 @@ public class RowDataTaskWriterFactory implements TaskWriterFactory<RowData> {
     private String schemaJson;
     private String primaryKey;
     private int tableId;
-
+    private TarimMetaClient metaClient;
 
     public RowDataTaskWriterFactory(SerializableTarimTable table, RowType flinkSchema, int parallelism){
         this.table = table;
@@ -30,6 +31,7 @@ public class RowDataTaskWriterFactory implements TaskWriterFactory<RowData> {
         this.schemaJson = table.getSchemaJson();
         this.tableId = table.getTableId();
         this.primaryKey = table.getPrimaryKey();
+        this.metaClient = table.getMetaClient();
     }
 
     @Override
@@ -40,7 +42,7 @@ public class RowDataTaskWriterFactory implements TaskWriterFactory<RowData> {
     @Override
     public TarimTaskWriter<RowData> create() {
 
-        return new TaskWriter(tableId, primaryKey, flinkSchema, parallelism, icebergSchema, partitionSpec, schemaJson);
+        return new TaskWriter(tableId, primaryKey, flinkSchema, parallelism, icebergSchema, partitionSpec, schemaJson, metaClient);
     }
 
     public Table getTable() {

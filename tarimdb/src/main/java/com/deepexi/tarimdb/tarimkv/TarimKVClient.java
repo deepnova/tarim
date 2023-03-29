@@ -3,6 +3,8 @@ package com.deepexi.tarimdb.tarimkv;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
+
+import com.deepexi.TarimMetaClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -22,7 +24,7 @@ public class TarimKVClient {
 
     public final static Logger logger = LogManager.getLogger(TarimKVClient.class);
 
-    private TarimKVMetaClient metaClient;
+    private TarimMetaClient metaClient;
     //private KVMetadata metadata;
     private KVLocalMetadata lMetadata;
     private TarimKVLocal kvLocal;
@@ -32,7 +34,7 @@ public class TarimKVClient {
     }
 
     // for unit test
-    public TarimKVClient(TarimKVMetaClient metaClient, KVLocalMetadata lMetadata){
+    public TarimKVClient(TarimMetaClient metaClient, KVLocalMetadata lMetadata){
         this.metaClient = metaClient;
         this.lMetadata = lMetadata;
     }
@@ -56,7 +58,7 @@ public class TarimKVClient {
             TarimKVProto.Node node = lMetadata.getMasterMNode();
             if(node == null) throw new NullPointerException("Not found master meta node"); 
             logger.info("get kv metadata from host: " + node.getHost() + ", port: " + node.getPort());
-            metaClient = new TarimKVMetaClient(node.getHost(), node.getPort());
+            metaClient = new TarimMetaClient(node.getHost(), node.getPort());
         }
         metaClient.getDistribution();
     }

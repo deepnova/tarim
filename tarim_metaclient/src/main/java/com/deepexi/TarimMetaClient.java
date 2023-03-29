@@ -1,53 +1,44 @@
-package com.deepexi.tarimdb.tarimkv;
+package com.deepexi;
 
-import com.deepexi.tarimdb.util.Status;
-import com.deepexi.rpc.TarimKVProto.DataDistributionRequest;
-import com.deepexi.rpc.TarimKVProto.DataDistributionResponse;
-import com.deepexi.rpc.TarimKVProto.DistributionInfo;
+import com.deepexi.rpc.*;
+import com.google.protobuf.ByteString;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+
+import java.io.Serializable;
+import java.util.HashMap;
+import java.util.List;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.util.concurrent.TimeUnit;
-import java.util.HashMap;
-import java.util.List;
-import com.deepexi.rpc.TarimKVMetaGrpc;
-import com.deepexi.rpc.TarimKVProto;
-//import com.google.protobuf.ByteString;
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
 import org.apache.commons.codec.digest.MurmurHash3;
-
-/**
- * TarimKVMetaClient
- *  
- */
-public class TarimKVMetaClient {
-
+public class TarimMetaClient implements Serializable {
     // TODO: not thread safety, need lock
-        
-    public final static Logger logger = LogManager.getLogger(TarimKVMetaClient.class);
 
+    public final static Logger logger = LogManager.getLogger(TarimMetaClient.class);
     private String metaHost;
+    private int test = 0;
     private int metaPort;
-    private DistributionInfo dataDist;
-    private HashMap<String, KVLocalMetadata.Node> mapSlotsNodes; // <slot:id, Node>
+    private TarimKVProto.DistributionInfo dataDist;
+    private HashMap<String, KvNode> mapSlotsNodes; // <slot:id, Node>
 
     private static final int ACCESS_REMOTE = 1;
     private static final int ACCESS_LOCAL = 2;
     private int accessMode; // 1: remote, 2: local
 
-    public TarimKVMetaClient(String host, int port) {
+    public TarimMetaClient(String host, int port) {
         metaHost = host;
         metaPort = port;
         accessMode = ACCESS_REMOTE;
     }
 
-    public TarimKVMetaClient(DistributionInfo dataDist) {
+    public TarimMetaClient(TarimKVProto.DistributionInfo dataDist) {
         this.dataDist = dataDist;
         accessMode = ACCESS_LOCAL;
     }
 
-    public void refreshDistribution(DistributionInfo dataDist) {
+    public void refreshDistribution(TarimKVProto.DistributionInfo dataDist) {
         this.dataDist = dataDist;
         rebuildMap();
     }
@@ -59,10 +50,11 @@ public class TarimKVMetaClient {
         channel = ManagedChannelBuilder.forAddress(metaHost, metaPort).usePlaintext().build();//指定grpc服务器地址和端口初始化通信channel
         blockStub = TarimKVMetaGrpc.newBlockingStub(channel);//根据通信channel初始化客户端存根节点
 
-        DataDistributionRequest request = DataDistributionRequest.newBuilder().setTableID(1).build();
-        DataDistributionResponse response = blockStub.getDataDistribution(request);
+        TarimKVProto.DataDistributionRequest request = TarimKVProto.DataDistributionRequest.newBuilder().setTableID(1).build();
+        TarimKVProto.DataDistributionResponse response = blockStub.getDataDistribution(request);
 
         logger.debug("get distribution code: " + response.getStatus().getCode());
+        /*
         for(TarimKVProto.Node node : response.getDistribution().getDnodesList()){
             logger.debug("distribution node: "+ KVMetadata.ObjToString(node));
         }
@@ -70,6 +62,7 @@ public class TarimKVMetaClient {
         for(TarimKVProto.RGroupItem rg: response.getDistribution().getRgroupsList()){
             logger.debug("distribution rgroup: "+ KVMetadata.ObjToString(rg));
         }
+         */
         dataDist = response.getDistribution();
         channel.shutdown();
         rebuildMap();
@@ -77,45 +70,45 @@ public class TarimKVMetaClient {
 
     private void rebuildMap(){
         // must re-build map
-        if(mapSlotsNodes == null) mapSlotsNodes = new HashMap<String, KVLocalMetadata.Node>();
+        if(mapSlotsNodes == null) mapSlotsNodes = new HashMap<String, KvNode>();
         else mapSlotsNodes.clear();
         for(TarimKVProto.Node node: dataDist.getDnodesList()) {
             if(node.getHost().isEmpty() || node.getPort() == 0) continue;
             for(TarimKVProto.Slot slot : node.getSlotsList()){
                 if(slot.getId().isEmpty()) continue;
-                mapSlotsNodes.put(slot.getId(), new KVLocalMetadata.Node(node.getHost(), node.getPort()));
+                mapSlotsNodes.put(slot.getId(), new KvNode(node.getHost(), node.getPort()));
             }
         }
     }
 
-    public DistributionInfo getDistribution(){
+    public TarimKVProto.DistributionInfo getDistribution(){
         if(dataDist == null) {
             refreshDistribution();
         }
         return dataDist;
     }
 
-    public KVLocalMetadata.Node getMasterReplicaNode(TarimKVProto.RGroupItem rgroup){
+    public KvNode getMasterReplicaNode(TarimKVProto.RGroupItem rgroup){
         for(TarimKVProto.Slot slot : rgroup.getSlotsList()){
             if(slot.getRole() == TarimKVProto.SlotRole.SR_MASTER){
-                KVLocalMetadata.Node node = mapSlotsNodes.get(slot.getId());
+                KvNode node = mapSlotsNodes.get(slot.getId());
                 if(node == null){
-                    logger.error("slot:" + slot.getId() + " not foun node, rgroup:" 
-                                 + rgroup.getId() + "(hashValue:" + rgroup.getHashValue() + ")");
+                    logger.error("slot:" + slot.getId() + " not foun node, rgroup:"
+                            + rgroup.getId() + "(hashValue:" + rgroup.getHashValue() + ")");
                     continue;
                 }
                 logger.debug("rgroup:" + rgroup.getId() + "(hashValue:" + rgroup.getHashValue()
-                           + "), master slot:" + slot.getId() 
-                           + ", host: " + node.host
-                           + ", port: " + node.port);
-                return new KVLocalMetadata.Node(node);
+                        + "), master slot:" + slot.getId()
+                        + ", host: " + node.host
+                        + ", port: " + node.port);
+                return new KvNode(node);
             }
         }
         logger.error("rgroup:" + rgroup.getId() + "(hashValue:" + rgroup.getHashValue() + ") not found master data node.");
         return null;
     }
 
-    public KVLocalMetadata.Node getMasterReplicaNode(long hashValue) {
+    public KvNode getMasterReplicaNode(long hashValue) {
         if(dataDist == null) {
             refreshDistribution();
         }
@@ -140,21 +133,21 @@ public class TarimKVMetaClient {
         }
     }
 
-    public KVLocalMetadata.Node getMasterReplicaNode(int chunkID) {
+    public KvNode getMasterReplicaNode(int chunkID) {
         long hash = MurmurHash3.hash32((long)chunkID);
         logger.debug("chunkID: " + chunkID + ", hash: " + hash);
         return getMasterReplicaNode(hash);
     }
 
-    public KVLocalMetadata.Node getReplicaNode(String slotID) {
-        KVLocalMetadata.Node node = mapSlotsNodes.get(slotID);
+    public KvNode getReplicaNode(String slotID) {
+        KvNode node = mapSlotsNodes.get(slotID);
         if(node == null){
             logger.error("slot:" + slotID + " not found data node.");
             return null;
         }
         logger.debug("slot:" + slotID
-                   + ", host: " + node.host
-                   + ", port: " + node.port);
+                + ", host: " + node.host
+                + ", port: " + node.port);
         return node;
     }
 
@@ -162,7 +155,7 @@ public class TarimKVMetaClient {
         for(TarimKVProto.Slot slot : rgroup.getSlotsList()){
             if(slot.getRole() == TarimKVProto.SlotRole.SR_MASTER){
                 logger.debug("rgroup:" + rgroup.getId() + "(hashValue:" + rgroup.getHashValue()
-                           + "), master slot:" + slot.getId());
+                        + "), master slot:" + slot.getId());
                 return slot.getId();
             }
         }
@@ -195,8 +188,23 @@ public class TarimKVMetaClient {
     }
     public String getMasterReplicaSlot(long chunkID) {
         long hash = MurmurHash3.hash32(chunkID);
-        long unsignedHash = (hash & 0xFFFFFFFFL) & 0x00000000FFFFFFFFL;
+        long unsignedHash = hash & 0x00000000FFFFFFFFL;
         logger.debug("chunkID: " + chunkID + ", hash: " + hash + ", unsigned:" + unsignedHash);
         return getMasterReplicaSlotByHash(unsignedHash);
+    }
+
+    public TarimProto.GetTableResponse loadTableRequest(String catalogName, String dataBaseName, String tableName){
+        ManagedChannel channel;//客户端与服务器的通信channel
+        TarimMetaGrpc.TarimMetaBlockingStub blockStub;
+        channel = ManagedChannelBuilder.forAddress(metaHost, metaPort).usePlaintext().build();//指定grpc服务器地址和端口初始化通信channel
+        blockStub = TarimMetaGrpc.newBlockingStub(channel);//根据通信channel初始化客户端存根节点
+
+        TarimProto.GetTableRequest request = TarimProto.GetTableRequest.newBuilder()
+                .setCatName(catalogName)
+                .setDbName(dataBaseName)
+                .setTblName(tableName)
+                .build();
+        TarimProto.GetTableResponse response = blockStub.getTable(request);
+        return response;
     }
 }

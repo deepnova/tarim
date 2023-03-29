@@ -1,9 +1,11 @@
 package org.deepexi.sink;
 
+import com.deepexi.TarimMetaClient;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.*;
+import org.apache.flink.calcite.shaded.org.apache.commons.codec.digest.MurmurHash3;
 import org.apache.flink.formats.avro.RowDataToAvroConverters;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.logical.RowType;
@@ -22,6 +24,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import com.deepexi.KvNode;
 
 import static org.deepexi.TarimUtil.serialize;
 
@@ -42,7 +45,9 @@ public class TaskWriter implements TarimTaskWriter<RowData> {
     private static final Logger LOG = LoggerFactory.getLogger(TaskWriter.class);
     private String primaryKey;
 
-    public TaskWriter(int tableId, String primaryKey, RowType flinkSchema, int parallelism, Schema icebergSchema, PartitionSpec partitionSpec, String schemaJson){
+    private TarimMetaClient metaClient;
+
+    public TaskWriter(int tableId, String primaryKey, RowType flinkSchema, int parallelism, Schema icebergSchema, PartitionSpec partitionSpec, String schemaJson, TarimMetaClient metaClient){
         this.tableId = tableId;
         this.primaryKey = primaryKey;
         this.parallelism = parallelism;
@@ -52,6 +57,7 @@ public class TaskWriter implements TarimTaskWriter<RowData> {
         this.avroSchema = new org.apache.avro.Schema.Parser().parse(schemaJson);
         this.converter = RowDataToAvroConverters.createConverter(flinkSchema);
         this.wrapper = new RowDataWrapper(flinkSchema, icebergSchema.asStruct());
+        this.metaClient = metaClient;
     }
 
 
@@ -99,7 +105,11 @@ public class TaskWriter implements TarimTaskWriter<RowData> {
         DataWriter writer = writers.get(partitionID);
         if (writer == null){
 
-            writer = new DataWriter(host, port, partitionID);
+            long chunkID = partitionID.hashCode() & 0x00000000FFFFFFFFL;
+            long hash = MurmurHash3.hash32(chunkID) & 0x00000000FFFFFFFFL;
+            KvNode node = metaClient.getMasterReplicaNode(hash);
+
+            writer = new DataWriter(node.host, node.port, partitionID);
             writers.put(partitionID, writer);
         }
 
