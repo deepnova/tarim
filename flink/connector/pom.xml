@@ -18,7 +18,7 @@
         <scala.binary.version>2.12</scala.binary.version>
         <flink.version>1.14.3</flink.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <grpc.version>1.52.1</grpc.version>
+        <grpc.version>1.47.0</grpc.version>
     </properties>
 
     <dependencies>
@@ -120,13 +120,14 @@
 <!--            <scope>compile</scope>-->
 <!--        </dependency>-->
         <dependency>
-            <groupId>com.deepexi</groupId>
-            <artifactId>tarimdb</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
-            <scope>system</scope>
-            <systemPath>
-                /usr/local/wpf/code/wpf_tarim/tarimdb/target/tarimdb-0.0.1-SNAPSHOT.jar
-            </systemPath>
+            <groupId>com.deepexi.tarim</groupId>
+            <artifactId>com.deepexi.tarim-grpc</artifactId>
+            <version>0.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>com.deepexi.tarim</groupId>
+            <artifactId>com.deepexi.tarim-metaclient</artifactId>
+            <version>0.0.1</version>
         </dependency>
         <dependency>
             <groupId>com.google.protobuf</groupId>
@@ -159,6 +160,11 @@
             <snapshots>
                 <enabled>false</enabled>
             </snapshots>
+        </repository>
+        <repository>
+            <id>depick2</id>
+            <name>Tarim Repo</name>
+            <url>http://nexus.deepexi.com/repository/maven-snapshots/</url>
         </repository>
     </repositories>
 

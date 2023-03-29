@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
 import java.util.Arrays;
+
+import com.deepexi.KvNode;
+import com.deepexi.TarimMetaClient;
 import com.google.protobuf.ByteString;
 import io.grpc.stub.StreamObserver;
 import org.apache.avro.Schema;
@@ -41,9 +44,9 @@ public class TarimKVLocal {
 
     private KVLocalMetadata lMetadata;
     private SlotManager slotManager;
-    private TarimKVMetaClient metaClient;
+    private TarimMetaClient metaClient;
 
-    public TarimKVLocal(TarimKVMetaClient metaClient, KVLocalMetadata lMetadata) {
+    public TarimKVLocal(TarimMetaClient metaClient, KVLocalMetadata lMetadata) {
         this.metaClient = metaClient;
         this.lMetadata = lMetadata;
         slotManager = new SlotManager();
@@ -62,7 +65,7 @@ public class TarimKVLocal {
             slotID = metaClient.getMasterReplicaSlot(chunkID);
             logger.info("chunkID: " + chunkID + ", slotID: " + slotID);
             if(slotID == null) throw new TarimKVException(Status.NULL_POINTER);
-            KVLocalMetadata.Node node = metaClient.getReplicaNode(slotID);
+            KvNode node = metaClient.getReplicaNode(slotID);
             if(node == null) throw new TarimKVException(Status.NULL_POINTER);
             logger.info("get replica node: " + node.toString());
             if(!node.host.equals(lMetadata.address)  || node.port != lMetadata.port){
@@ -88,7 +91,7 @@ public class TarimKVLocal {
                   + ", chunkID: " + request.getChunkID()
                   + ", values count: " + request.getValuesCount());
         if(request.getTableID() > 0
-           //&& request.getChunkID() > 0
+           && request.getChunkID() > 0
            && request.getValuesCount() > 0) {
            return;
         }
@@ -121,7 +124,7 @@ public class TarimKVLocal {
     private void validGetParam(GetRequest request) throws TarimKVException
     {
         if(request.getTableID() > 0
-           //&& request.getChunkID() > 0
+           && request.getChunkID() > 0
            && request.getKeysCount() > 0) 
         {
            return;

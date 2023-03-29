@@ -1,5 +1,6 @@
 package org.deepexi;
 
+import com.deepexi.TarimMetaClient;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.iceberg.*;
 import org.apache.iceberg.encryption.EncryptionManager;
@@ -17,6 +18,7 @@ public class SerializableTarimTable implements Table, Serializable {
     private Schema schema;
     private String schemaJson;
     private String primaryKey;
+    private TarimMetaClient metaClient;
     private SerializableTarimTable(ConnectorTarimTable table) {
         this.name = table.getName();
         this.tableId = table.getTableId();
@@ -24,6 +26,7 @@ public class SerializableTarimTable implements Table, Serializable {
         this.partitionSpec = table.spec();
         this.schemaJson = table.getSchemaJson();
         this.primaryKey = table.getPrimaryKey();
+        this.metaClient = table.getMetaClient();
     }
     public static Table copyOf(ConnectorTarimTable table) {
         return new SerializableTarimTable(table);
@@ -35,6 +38,10 @@ public class SerializableTarimTable implements Table, Serializable {
 
     public String getPrimaryKey() {
         return this.primaryKey;
+    }
+
+    public TarimMetaClient getMetaClient() {
+        return this.metaClient;
     }
     @Override
     public void refresh() {

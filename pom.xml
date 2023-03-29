@@ -18,6 +18,8 @@
     <modules>
         <module>tarimdb</module>
         <module>flink</module>
+        <module>tarim_protobuf</module>
+        <module>tarim_metaclient</module>
     </modules>
 
     <properties>

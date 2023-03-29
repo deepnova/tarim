@@ -1,5 +1,6 @@
 package org.deepexi.sink;
 
+import com.deepexi.TarimMetaClient;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
@@ -233,6 +234,12 @@ public class TarimSink{
                                                                int parallelism) {
             Preconditions.checkArgument(table != null, "Iceberg table should't be null");
             Map<String, String> props = table.properties();
+
+            //todo fixed the host and ip now
+            ((ConnectorTarimTable)table).setMetaClient(new TarimMetaClient("127.0.0.1", 1301));
+
+            ((ConnectorTarimTable)table).metaClient.getDistribution();
+
             SerializableTarimTable serializableTable = (SerializableTarimTable) SerializableTarimTable.copyOf((ConnectorTarimTable)table);
 
             RowDataTaskWriterFactory writerFactory = new RowDataTaskWriterFactory(serializableTable, rowType, parallelism);

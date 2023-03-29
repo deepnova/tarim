@@ -6,6 +6,10 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Collections;
 import java.util.UnknownFormatConversionException;
+
+import com.deepexi.KvNode;
+import com.deepexi.TarimMetaClient;
+import com.google.protobuf.ByteString;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -29,7 +33,7 @@ class TarimKVClientTest {
 
     private final static Logger logger = LogManager.getLogger(TarimKVClientTest.class);
 
-    private TarimKVMetaClient metaClient;
+    private TarimMetaClient metaClient;
     private TarimKVClient kvClient;
     private KVLocalMetadata lMetadata;
 
@@ -38,7 +42,7 @@ class TarimKVClientTest {
 
     public void init()
     {
-        metaClient = mock(TarimKVMetaClient.class);
+        metaClient = mock(TarimMetaClient.class);
         initLocalMetadata();
 
         doNothing().doThrow(new RuntimeException()).when(metaClient).refreshDistribution();
@@ -46,8 +50,11 @@ class TarimKVClientTest {
         when(metaClient.getMasterReplicaSlot(1)).thenReturn("sl-1");
         when(metaClient.getMasterReplicaSlot(2)).thenReturn("sl-1");
         when(metaClient.getMasterReplicaSlot(3)).thenReturn("sl-2");
-        when(metaClient.getReplicaNode("sl-1")).thenReturn(new KVLocalMetadata.Node("127.0.0.1", 1302));
-        when(metaClient.getReplicaNode("sl-2")).thenReturn(new KVLocalMetadata.Node("127.0.0.1", 1302));
+        KVLocalMetadata.Node node1 = new KVLocalMetadata.Node("127.0.0.1", 1302);
+        KVLocalMetadata.Node node2 = new KVLocalMetadata.Node("127.0.0.1", 1302);
+
+        when(metaClient.getReplicaNode("sl-1")).thenReturn(new KvNode(node1.host, node1.port));
+        when(metaClient.getReplicaNode("sl-2")).thenReturn(new KvNode(node2.host, node2.port));
 
         kvClient = new TarimKVClient(metaClient, lMetadata);
     }
@@ -115,12 +122,12 @@ class TarimKVClientTest {
     void doPut(TarimKVClient kvClient, int tableID, long chunkID)
     {
         PutRequest.Builder putReqBuilder = PutRequest.newBuilder();
-        TarimKVProto.KeyValue.Builder kvBuilder = TarimKVProto.KeyValue.newBuilder();
+        TarimKVProto.KeyValueByte.Builder kvBuilder = TarimKVProto.KeyValueByte.newBuilder();
         putReqBuilder.setTableID(tableID);
         putReqBuilder.setChunkID(chunkID);
         for(long i = 100 * chunkID; i < 100 + 100 * chunkID; i++){
             kvBuilder.setKey("key-" + Long.toString(i));
-            kvBuilder.setValue("value-" + Long.toString(i));
+            kvBuilder.setValue(ByteString.copyFromUtf8("value-" + Long.toString(i)));
             putReqBuilder.addValues(kvBuilder);
         }
 
@@ -213,7 +220,7 @@ class TarimKVClientTest {
 
         try{
             kvClient.init();
-            List<TarimKVProto.KeyValue> results = kvClient.prefixSeek(prefixReqBuilder.build());
+            List<TarimKVProto.KeyValueByte> results = kvClient.prefixSeek(prefixReqBuilder.build());
             logger.info("results: " + results.toString());
         }catch(TarimKVException e){
             System.out.println("TarimKVException: " + e);

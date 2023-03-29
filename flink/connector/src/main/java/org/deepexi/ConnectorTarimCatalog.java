@@ -1,5 +1,6 @@
 package org.deepexi;
 
+import com.deepexi.TarimMetaClient;
 import com.deepexi.rpc.TarimProto;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.table.api.TableSchema;
@@ -135,7 +136,7 @@ public class ConnectorTarimCatalog implements Catalog {
             throw new RuntimeException(e);
         }
 
-        MetaClient metaClient = new MetaClient(host, port);
+        TarimMetaClient metaClient = new TarimMetaClient(host, port);
 
         TarimProto.GetTableResponse  response = metaClient.loadTableRequest(catalogName, DbName, tableName);
         try{
