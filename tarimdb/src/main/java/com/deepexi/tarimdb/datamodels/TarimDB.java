@@ -48,7 +48,7 @@ public class TarimDB extends AbstractDataModel {
         TarimKVProto.PutRequest.Builder requestBuilder = TarimKVProto.PutRequest.newBuilder();
         TarimKVProto.KeyValueByte.Builder kvBuiler = TarimKVProto.KeyValueByte.newBuilder();
 
-        requestBuilder.setChunkID(partitionID.hashCode());
+        requestBuilder.setChunkID(partitionID.hashCode() & 0x00000000FFFFFFFFL);
         requestBuilder.setTableID(tableID);
 
         ByteArrayInputStream bytesIS = new ByteArrayInputStream(records);

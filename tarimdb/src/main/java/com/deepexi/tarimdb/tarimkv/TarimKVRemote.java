@@ -1,6 +1,8 @@
 package com.deepexi.tarimdb.tarimkv;
 
 import java.util.List;
+
+import com.deepexi.TarimMetaClient;
 import com.google.protobuf.ByteString;
 import io.grpc.stub.StreamObserver;
 import org.apache.logging.log4j.LogManager;
@@ -29,7 +31,7 @@ public class TarimKVRemote extends TarimKVGrpc.TarimKVImplBase {
     public final static Logger logger = LogManager.getLogger(TarimKVRemote.class);
 
     private KVMetadata metadata;
-    private TarimKVMetaClient metaClient;
+    private TarimMetaClient metaClient;
     //private List<TarimKVProto.Slot> slotsConf;
     private KVLocalMetadata lMetadata;
     private TarimKVLocal kvLocal;
@@ -40,7 +42,7 @@ public class TarimKVRemote extends TarimKVGrpc.TarimKVImplBase {
         logger.debug("TarimKVRemote constructor, metadata: " + metadata.toString());
         logger.debug("TarimKVLocal constructor, local metadata: " + lMetadata.toString());
 
-        metaClient = new TarimKVMetaClient(metadata.toDistributionInfo(false));
+        metaClient = new TarimMetaClient(metadata.toDistributionInfo(false));
         kvLocal = new TarimKVLocal(metaClient, lMetadata);
     }
 
