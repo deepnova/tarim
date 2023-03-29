@@ -38,7 +38,7 @@ dnodes:
     status: 1
   - id: dn-3
     host: 127.0.0.1
-    port: 1303
+    port: 1304
     slots:
       - id: sl-3-1
         dataPath: /data/tarim-data/tarimkv-data-test/h3/slot1

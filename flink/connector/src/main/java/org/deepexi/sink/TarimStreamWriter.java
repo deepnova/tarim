@@ -16,6 +16,7 @@ import org.apache.iceberg.Table;
 
 import org.apache.iceberg.flink.RowDataWrapper;
 
+import org.apache.iceberg.io.TaskWriter;
 import org.apache.iceberg.relocated.com.google.common.base.MoreObjects;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.deepexi.ConnectorTarimTable;
@@ -29,7 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static org.deepexi.sink.TarimSink.Builder.toFlinkRowType;
+import static org.deepexi.sink.TarimSink.Builder. toFlinkRowType;
 
 public class TarimStreamWriter<T> extends AbstractStreamOperator<WResult>
         implements OneInputStreamOperator<T, WResult>, BoundedOneInput {
@@ -41,17 +42,20 @@ public class TarimStreamWriter<T> extends AbstractStreamOperator<WResult>
     private transient int subTaskId;
     private transient int attemptId;
 
-    private transient Table table;
+    //private Table table;
+    private TaskWriterFactory<T> taskWriterFactory;
+    private transient TarimTaskWriter<T> writer;
     private TarimDbAdapt dbAdapter;
     public List<String> dataList = new ArrayList<>();
     public List<String> completeList = new ArrayList<>();
     public int batchNum = 10;
     public int dataIndex = 0;
 
-    TarimStreamWriter(String fullTableName, Table table) {
+    TarimStreamWriter(String fullTableName, TaskWriterFactory<T> taskWriterFactory) {
         this.fullTableName = fullTableName;
-        this.table = table;
+        this.taskWriterFactory = taskWriterFactory;
         setChainingStrategy(ChainingStrategy.ALWAYS);
+        //this.table = ((RowDataTaskWriterFactory)taskWriterFactory).getTable();
     }
 
 
@@ -60,7 +64,10 @@ public class TarimStreamWriter<T> extends AbstractStreamOperator<WResult>
         this.subTaskId = getRuntimeContext().getIndexOfThisSubtask();
         this.attemptId = getRuntimeContext().getAttemptNumber();
 
-        this.dbAdapter = new TarimDbAdapt(subTaskId, attemptId, table);
+        //this.dbAdapter = new TarimDbAdapt(subTaskId, attemptId, table);
+
+        this.taskWriterFactory.initialize(subTaskId, attemptId);
+        this.writer = taskWriterFactory.create();
     }
 
     @Override
@@ -72,10 +79,10 @@ public class TarimStreamWriter<T> extends AbstractStreamOperator<WResult>
 
     @Override
     public void processElement(StreamRecord<T> element) throws Exception {
+        LOG.info("streamTask-processElement...");
+        writer.write(element.getValue());
+        /*
         LOG.info("stream-processElement" + element.getValue().toString());
-
-        final Map<PartitionKey, String> writers = Maps.newHashMap();
-
 
         //writer.write(element.getValue());
         if (element != null){
@@ -102,12 +109,13 @@ public class TarimStreamWriter<T> extends AbstractStreamOperator<WResult>
                 dataIndex = 0;
             }
         }
-
+*/
     }
 
     @Override
     public void close() throws Exception {
-        return;
+        writer.close();
+        writer = null;
     }
 
     @Override
@@ -128,7 +136,7 @@ public class TarimStreamWriter<T> extends AbstractStreamOperator<WResult>
 
     private void flush() throws IOException {
         LOG.info("stream-flush...");
-
+/*
         if (dataList.size() > 0){
             completeList.addAll(dataList);
             dbAdapter.writeData(dataList);
@@ -138,8 +146,10 @@ public class TarimStreamWriter<T> extends AbstractStreamOperator<WResult>
         }else{
             LOG.info("the list is empty");
         }
-        WResult wr = new WResult(completeList);
-        StreamRecord<WResult> streamRecord =new StreamRecord<>(wr);
+
+ */
+
+        StreamRecord<WResult> streamRecord =new StreamRecord<>(writer.complete());
         output.collect(streamRecord);
     }
 }

@@ -1,6 +1,8 @@
 package com.deepexi.tarimdb.tarimkv;
 
 import java.util.Map;
+
+import com.google.protobuf.ByteString;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -19,12 +21,12 @@ public class KeyValueCodec
     private static String KEY_SEPARATOR = "_";
 
     public long chunkID;
-    public TarimKVProto.KeyValue value;
+    public TarimKVProto.KeyValueByte value;
     public TarimKVProto.KeyValueOp valueOp;
 
     public KeyValueCodec(){ }
 
-    public KeyValueCodec(long chunkID, TarimKVProto.KeyValue value)
+    public KeyValueCodec(long chunkID, TarimKVProto.KeyValueByte value)
     {
         this.chunkID = chunkID;
         this.value = value;
@@ -78,7 +80,7 @@ public class KeyValueCodec
         return internalKey;
     }
 
-    public static KeyValueCodec KeyDecode(String internalKey, String value) throws TarimKVException
+    public static KeyValueCodec KeyDecode(String internalKey, byte[] value) throws TarimKVException
     {
         String[] results = internalKey.split(KeyValueCodec.KEY_SEPARATOR);
         //logger.info("KeyDecode(), internalKey: " + internalKey
@@ -86,9 +88,9 @@ public class KeyValueCodec
         if(results.length != 2) return null; //throw new TarimKVException(Status.KEY_ENCODE_ERROR);
         KeyValueCodec kvc = new KeyValueCodec();
         kvc.chunkID = Long.parseLong(results[0]);
-        TarimKVProto.KeyValue.Builder kvBuilder = TarimKVProto.KeyValue.newBuilder();
+        TarimKVProto.KeyValueByte.Builder kvBuilder = TarimKVProto.KeyValueByte.newBuilder();
         kvBuilder.setKey(results[1]);
-        kvBuilder.setValue(value);
+        kvBuilder.setValue(ByteString.copyFrom(value));
         kvc.value = kvBuilder.build();
         return kvc;
     }

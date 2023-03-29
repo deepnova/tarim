@@ -10,51 +10,32 @@ import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
-public class ConnectorTarimTable implements Table, Serializable {
+public class SerializableTarimTable implements Table, Serializable {
     private String name;
     private int tableId;
-    private transient TableSchema flinkSchema;
-
-    private List<String> partitionKey;
-
     private PartitionSpec partitionSpec;
     private Schema schema;
     private String schemaJson;
     private String primaryKey;
-    public ConnectorTarimTable(String name){
-        this.name = name;
+    private SerializableTarimTable(ConnectorTarimTable table) {
+        this.name = table.getName();
+        this.tableId = table.getTableId();
+        this.schema = table.schema();
+        this.partitionSpec = table.spec();
+        this.schemaJson = table.getSchemaJson();
+        this.primaryKey = table.getPrimaryKey();
+    }
+    public static Table copyOf(ConnectorTarimTable table) {
+        return new SerializableTarimTable(table);
     }
 
-    public ConnectorTarimTable(String name, int tableId, TableSchema flinkSchema, List<String> partitionKey, PartitionSpec partitionSpec, Schema schema, String schemaJson, String primaryKey){
-        this.name = name;
-        this.tableId = tableId;
-        this.flinkSchema = flinkSchema;
-        this.partitionKey = partitionKey;
-        this.partitionSpec = partitionSpec;
-        this.schema = schema;
-        this.schemaJson = schemaJson;
-        this.primaryKey = primaryKey;
+    public int getTableId() {return tableId;}
+
+    public String getSchemaJson() {return schemaJson;}
+
+    public String getPrimaryKey() {
+        return this.primaryKey;
     }
-
-    public String getName(){return this.name;}
-
-    public int getTableId(){return tableId;}
-
-    public String getSchemaJson(){return schemaJson;}
-
-    public TableSchema getFlinkSchema(){
-        return flinkSchema;
-    }
-
-
-    public List<String> getPartitionKey(){
-        return partitionKey;
-    }
-
-    public String getPrimaryKey(){
-        return primaryKey;
-    }
-
     @Override
     public void refresh() {
 
@@ -67,7 +48,7 @@ public class ConnectorTarimTable implements Table, Serializable {
 
     @Override
     public Schema schema() {
-        return this.schema;
+        return schema;
     }
 
     @Override
@@ -77,7 +58,7 @@ public class ConnectorTarimTable implements Table, Serializable {
 
     @Override
     public PartitionSpec spec() {
-        return this.partitionSpec;
+        return partitionSpec;
     }
 
     @Override

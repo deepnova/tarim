@@ -74,15 +74,12 @@ class TarimFilesCommitter extends AbstractStreamOperator<Void>
     public void endInput() {
         //todo
         long checkpointId = Long.MAX_VALUE;
-        StringBuffer sb = new StringBuffer();
+
         for ( WResult wr :resultsOfCurrentCkPt){
-            for (String str : wr.strList){
-                sb.append(str);
+            for (byte[] data : wr.getDataList()){
+                dataListPerCheckpoint.put(checkpointId, data);
             }
         }
-        String tmp = sb.toString();
-        LOG.info("files-commit-endInput" + tmp);
-        dataListPerCheckpoint.put(checkpointId, sb.toString().getBytes());
 
         resultsOfCurrentCkPt.clear();
         dbAdapter.endData();
@@ -102,22 +99,15 @@ class TarimFilesCommitter extends AbstractStreamOperator<Void>
         super.snapshotState(context);
         long checkpointId = context.getCheckpointId();
 
-        StringBuffer sb = new StringBuffer();
-        for ( WResult wr : resultsOfCurrentCkPt){
-            for (String str : wr.strList){
-                sb.append(str);
+        for ( WResult wr :resultsOfCurrentCkPt){
+            for (byte[] data : wr.getDataList()){
+                dataListPerCheckpoint.put(checkpointId, data);
             }
         }
 
-        String tmp = sb.toString();
-        LOG.info("files-commit-snapshotState-old-str:"+ tmp);
-        LOG.info("files-commit-snapshotState-to-bytes:" + tmp.getBytes());
-
-        dataListPerCheckpoint.put(checkpointId, sb.toString().getBytes());
-        String tmpNew = new String(tmp.getBytes());
-        LOG.info("files-commit-snapshotState-new-str:" + tmpNew);
         checkpointsState.clear();
         checkpointsState.add(dataListPerCheckpoint);
+
         jobIdState.clear();
         jobIdState.add(flinkJobId);
 

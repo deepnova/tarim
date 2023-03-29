@@ -156,13 +156,13 @@ public class Slot
         db.delete(cfHandle, writeOpts, key.getBytes());
     }
 
-    public List<TarimKVProto.KeyValue> prefixSeek(ReadOptions readOpts, ColumnFamilyHandle cfHandle, String keyPrefix) throws RocksDBException, TarimKVException
+    public List<TarimKVProto.KeyValueByte>  prefixSeek(ReadOptions readOpts, ColumnFamilyHandle cfHandle, String keyPrefix) throws RocksDBException, TarimKVException
     {
         readOpts.setAutoPrefixMode(true);
         RocksIterator iter = db.newIterator(cfHandle, readOpts);
         iter.seek(keyPrefix.getBytes());
 
-        List<TarimKVProto.KeyValue> results = new ArrayList();
+        List<TarimKVProto.KeyValueByte> results = new ArrayList();
 
         for (iter.seek(keyPrefix.getBytes()); 
              iter.isValid() && Common.startWith(iter.key(), keyPrefix.getBytes()); 
@@ -177,7 +177,7 @@ public class Slot
                 continue; // TODO: throw exception if necessary in futrue.
             }
             String key = new String(iter.key());
-            String value = new String(iter.value());
+            byte[] value = iter.value();
             KeyValueCodec kvc = KeyValueCodec.KeyDecode(key, value);
             if(kvc == null){
                 logger.warn("prefixSeek() key not matched and ignore, result internal key: " + key 
