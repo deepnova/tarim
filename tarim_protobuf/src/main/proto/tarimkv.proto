@@ -98,7 +98,7 @@ message GetRequest {
     repeated string keys = 3;
 }
 
-message GetReponse {
+message GetResponse {
     StatusResponse status = 1;
     repeated KeyValueOp values = 2;
 }
@@ -124,7 +124,7 @@ service TarimKVMeta {
 
 service TarimKV { // for DB metadata
     rpc put(PutRequest) returns (StatusResponse);
-    rpc get(GetRequest) returns (GetReponse);
-    rpc prefixSeek(PrefixSeekRequest) returns (GetReponse);
+    rpc get(GetRequest) returns (GetResponse);
+    rpc prefixSeek(PrefixSeekRequest) returns (GetResponse);
     rpc delete(DeleteRequest) returns (StatusResponse);
 }

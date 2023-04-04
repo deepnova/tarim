@@ -88,6 +88,11 @@ message PrepareScanRequest {
     repeated Executor executors = 2;
 }
 
+message PrepareMetaNodeScanRequest {
+    int32 tableID = 1;
+    repeated string partitionID = 2;
+}
+
 message PrepareScanResponse {
     int32 code = 1;
     string msg = 2;
@@ -107,9 +112,16 @@ message ScanResponse {
     bytes deleteRecords = 4; // delete records, serialized in avro
 }
 
+message PartitionRequest{
+    int32 tableID = 1;
+    string partitionID = 2;
+}
+
 service TarimMeta {
 
     rpc getTable(GetTableRequest) returns (GetTableResponse);
+
+    rpc setPartition(PartitionRequest) returns (DbStatusResponse);
 
     // call: client -> TarimMeta::prepareScan -> TarimDB::prepareScan
     rpc prepareScan(PrepareScanRequest) returns (PrepareScanResponse);
@@ -123,7 +135,7 @@ service Tarim {
 
     //rpc delete(DeleteRequest) returns (DeleteResponse); //TODO
 
-    rpc prepareScan(PrepareScanRequest) returns (PrepareScanResponse);
+    rpc prepareScan(PrepareMetaNodeScanRequest) returns (PrepareScanResponse);
 
     rpc scan(ScanRequest) returns (ScanResponse);
 }

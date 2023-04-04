@@ -6,6 +6,7 @@ import org.apache.iceberg.*;
 import org.apache.iceberg.encryption.EncryptionManager;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.LocationProvider;
+import org.deepexi.source.ScanPartition;
 
 import java.io.Serializable;
 import java.util.List;
@@ -24,6 +25,8 @@ public class ConnectorTarimTable implements Table, Serializable {
     private String primaryKey;
 
     public TarimMetaClient metaClient;
+
+    public List<ScanPartition> scanList;
 
     public ConnectorTarimTable(String name){
         this.name = name;
@@ -66,6 +69,9 @@ public class ConnectorTarimTable implements Table, Serializable {
         return primaryKey;
     }
 
+    public void setScanList(List<ScanPartition> list){
+        this.scanList = list;
+    }
     @Override
     public void refresh() {
 

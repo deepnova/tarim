@@ -323,5 +323,9 @@ public class TarimScanContext implements Serializable {
                     splitOpenFileCost, isStreaming, monitorInterval, nameMapping, projectedSchema,
                     filters, limit, includeColumnStats, datafileFromIceberg);
         }
+
+        public List<Expression> getFilters(){
+            return this.filters;
+        }
     }
 }

@@ -17,9 +17,9 @@ public class KvNode implements Serializable {
     }
     public String toString(TarimKVProto.Node node) {
         StringBuilder sb = new StringBuilder();
-        sb.append("{host=");     sb.append(host);
-        sb.append(",port=");     sb.append(port);
-        sb.append("}");
+        sb.append(host);
+        sb.append(":");
+        sb.append(port);
         return sb.toString();
     }
 }

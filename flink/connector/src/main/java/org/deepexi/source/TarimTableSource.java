@@ -14,16 +14,19 @@ import org.apache.flink.table.connector.source.abilities.SupportsProjectionPushD
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.expressions.ResolvedExpression;
 import org.apache.iceberg.expressions.Expression;
+import org.apache.iceberg.flink.FlinkFilters;
 import org.apache.iceberg.flink.TableLoader;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
+import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class TarimTableSource implements ScanTableSource, SupportsProjectionPushDown, SupportsFilterPushDown, SupportsLimitPushDown {
     private final int[] projectedFields;
     private final long limit;
-    private final List<Expression> filters;
+    private List<Expression> filters;
 
     private final TableLoader tableLoader;
     private final TableSchema schema;
@@ -67,7 +70,7 @@ public class TarimTableSource implements ScanTableSource, SupportsProjectionPush
                 .properties(properties)
                 //.project(getProjectedSchema())
                //.limit(limit)
-               // .filters(filters)
+                .filters(filters)
                // .flinkConf(readableConfig)
                 .build();
     }
@@ -103,8 +106,20 @@ public class TarimTableSource implements ScanTableSource, SupportsProjectionPush
     }
 
     @Override
-    public Result applyFilters(List<ResolvedExpression> list) {
-        return null;
+    public Result applyFilters(List<ResolvedExpression> flinkFilters) {
+        List<ResolvedExpression> acceptedFilters = Lists.newArrayList();
+        List<Expression> expressions = Lists.newArrayList();
+
+        for (ResolvedExpression resolvedExpression : flinkFilters) {
+            Optional<Expression> icebergExpression = FlinkFilters.convert(resolvedExpression);
+            if (icebergExpression.isPresent()) {
+                expressions.add(icebergExpression.get());
+                acceptedFilters.add(resolvedExpression);
+            }
+        }
+
+        this.filters = expressions;
+        return Result.of(acceptedFilters, flinkFilters);
     }
 
     @Override

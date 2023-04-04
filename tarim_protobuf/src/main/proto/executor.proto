@@ -20,14 +20,12 @@ enum ExecType {
 }
 
 message Executor {
-    int32 ExecType = 1;
-    oneof exec {
-        TableScan tableScan = 2;
-        Selection selection = 3;
-        Projection projection = 4;
-	    PartitionTableScan partitionScan = 5;
+	  ExecType execType = 1;
+        //TableScan tableScan = 2;
+	  Selection selection = 2;
+        //Projection projection = 4;
+	  PartitionTableScan partitionScan = 3;
         //TODO: more
-    }
 }
 
 message TableScan {
@@ -38,13 +36,13 @@ message TableScan {
 message PartitionTableScan {
 	int32 tableID = 1;
 	repeated string columns = 2;
-	repeated int32 partitionIds = 3;
+	repeated string partitionIds = 3;
 }
 
 message Selection {
     //TODO:
 	// Where conditions.
-	//repeated Expr conditions = 1;
+	bytes conditions = 1;
 	//repeated RpnExpr rpn_conditions = 2;
 	//optional Executor child = 3;
 }

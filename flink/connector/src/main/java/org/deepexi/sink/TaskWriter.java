@@ -1,6 +1,7 @@
 package org.deepexi.sink;
 
 import com.deepexi.TarimMetaClient;
+import com.deepexi.rpc.TarimProto;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.generic.GenericRecord;
@@ -108,7 +109,11 @@ public class TaskWriter implements TarimTaskWriter<RowData> {
             long chunkID = partitionID.hashCode() & 0x00000000FFFFFFFFL;
             long hash = MurmurHash3.hash32(chunkID) & 0x00000000FFFFFFFFL;
             KvNode node = metaClient.getMasterReplicaNode(hash);
-
+            TarimProto.DbStatusResponse response = metaClient.partitionRequest(tableId, partitionID);
+            //todo check
+            if (node.host == null || response.getCode() != 0){
+                throw new RuntimeException("the result is incorrect from meta node!!");
+            }
             writer = new DataWriter(node.host, node.port, partitionID);
             writers.put(partitionID, writer);
         }

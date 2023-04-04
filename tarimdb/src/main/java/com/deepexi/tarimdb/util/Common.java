@@ -1,12 +1,10 @@
 package com.deepexi.tarimdb.util;
 
 import com.deepexi.tarimdb.tarimkv.YamlLoader;
+import org.apache.iceberg.StructLike;
 
 import java.io.InputStream;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Scanner;
+import java.util.*;
 
 public class Common {
 
@@ -66,6 +64,53 @@ public class Common {
         }
 
         return jsonString;
+    }
+
+    public static class Row implements StructLike {
+        public static Row of(Object... values) {
+            return new Row(values);
+        }
+
+        private final Object[] values;
+
+        private Row(Object... values) {
+            this.values = values;
+        }
+
+        @Override
+        public int size() {
+            return values.length;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> T get(int pos, Class<T> javaClass) {
+            return javaClass.cast(values[pos]);
+        }
+
+        @Override
+        public <T> void set(int pos, T value) {
+            throw new UnsupportedOperationException("Setting values is not supported");
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) {
+                return true;
+            }
+            if (other == null || getClass() != other.getClass()) {
+                return false;
+            }
+
+            Row that = (Row) other;
+
+            return Arrays.equals(values, that.values);
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(values);
+        }
     }
 }
 

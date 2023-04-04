@@ -1,10 +1,6 @@
 package com.deepexi.tarimdb.tarimkv;
 
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Set;
-import java.util.List;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.lang.StringBuilder;
 import java.lang.IllegalArgumentException;
@@ -35,6 +31,16 @@ public class Slot
 
     public Slot(TarimKVProto.Slot slot){
         slotConfig = slot;
+    }
+
+    public void put(String key, String value){
+        logger.info("put operator, key = {}, value = {}", key ,value);
+
+        try {
+            db.put(key.getBytes(), value.getBytes());
+        } catch (RocksDBException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void open() throws Exception, RocksDBException, IllegalArgumentException {
@@ -194,6 +200,48 @@ public class Slot
                         + ", cfName: " + cfHandle.getName()
                         + ", key prefix: " + keyPrefix);
             results.add(kvc.value);
+        }
+        return results;
+    }
+
+    public List<TarimKVProto.KeyValue>  prefixSeekForSchema(ReadOptions readOpts, ColumnFamilyHandle cfHandle, String keyPrefix) throws RocksDBException, TarimKVException
+    {
+        readOpts.setAutoPrefixMode(true);
+        RocksIterator iter = db.newIterator(cfHandle, readOpts);
+        iter.seek(keyPrefix.getBytes());
+
+        List<TarimKVProto.KeyValue> results = new ArrayList();
+
+        for (iter.seek(keyPrefix.getBytes());
+             iter.isValid() && Common.startWith(iter.key(), keyPrefix.getBytes());
+             iter.next())
+        {
+            iter.status();
+            if(iter.key() == null || iter.value() == null)
+            {
+                logger.error("prefixSeek(), iterator seek error, key or value is null, key: " + iter.key()
+                        + ", value: " + iter.value()
+                        + ", key prefix: " + keyPrefix);
+                continue; // TODO: throw exception if necessary in futrue.
+            }
+            String key = new String(iter.key());
+            byte[] value = iter.value();
+            KeyValueCodec kvc = KeyValueCodec.schemaKeyDecode(key, Arrays.toString(value));
+            if(kvc == null){
+                logger.warn("prefixSeek() key not matched and ignore, result internal key: " + key
+                        + ", value: " + value
+                        + ", cfName: " + cfHandle.getName()
+                        + ", key prefix: " + keyPrefix);
+                continue;
+            }
+            logger.info("prefixSeek(), result internal key: " + key
+                    + ", value: " + value
+                    + ", chunkID: " + kvc.tableID
+                    + ", key: " + kvc.valueKV.getKey()
+                    + ", value: " + kvc.valueKV.getValue()
+                    + ", cfName: " + cfHandle.getName()
+                    + ", key prefix: " + keyPrefix);
+            results.add(kvc.valueKV);
         }
         return results;
     }

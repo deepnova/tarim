@@ -67,8 +67,8 @@ public class TarimDBServer extends TarimGrpc.TarimImplBase {
         //TODO
     }
 
-    public void prepareScan(TarimProto.PrepareScanRequest request,
-                            StreamObserver<TarimProto.PrepareScanResponse> responseObserver) 
+    public void prepareScan(TarimProto.PrepareMetaNodeScanRequest request,
+                            StreamObserver<TarimProto.PrepareScanResponse> responseObserver)
     {
         //TODO
     }

@@ -1,5 +1,7 @@
 package org.deepexi.source;
 
+import com.deepexi.TarimMetaClient;
+import com.deepexi.rpc.TarimProto;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ReadableConfig;
@@ -22,9 +24,13 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.deepexi.TarimDbAdapt;
+
+import static org.deepexi.TarimUtil.serialize;
+
 public class TarimSource {
     private TarimSource() {
     }
@@ -41,6 +47,8 @@ public class TarimSource {
         private ReadableConfig readableConfig = new Configuration();
         public TarimDbAdapt tarimDbAdapt = new TarimDbAdapt(0, 0, null);
         private final TarimScanContext.Builder contextBuilder = TarimScanContext.builder();
+
+        private TarimMetaClient metaClient;
 
         public Builder table(Table newTable) {
             this.table = newTable;
@@ -135,10 +143,27 @@ public class TarimSource {
         public DataStream<RowData> build() {
             Preconditions.checkNotNull(env, "StreamExecutionEnvironment should not be null");
 
-            //todo, do PrepareScan to TarimDB, syn msg, receive the trunk information
             TarimFlinkInputFormat format = buildFormat();
 
             TarimScanContext context = contextBuilder.build();
+
+            metaClient = new TarimMetaClient("127.0.0.1", 1301);
+
+            //todo, now the list for columns and partitionID are null
+            TarimProto.PrepareScanResponse result = metaClient.preScan(100, serialize(contextBuilder.getFilters()), new ArrayList<>(), new ArrayList<>());
+            if (result.getCode() != 0){
+                throw new RuntimeException("the result of preScan is incorrect!!");
+            }
+
+            TarimProto.ScanInfo res = result.getScanInfo();
+            List<TarimProto.Partition> patitionList = res.getPartitionsList();
+
+
+            List<ScanPartition> scanList = new ArrayList<>();
+            for(TarimProto.Partition partition : patitionList){
+                scanList.add(new ScanPartition(partition.getPartitionID(), partition.getScanHandler(), partition.getMergePolicy(), partition.getMainPathsList()));
+            }
+
             TypeInformation<RowData> typeInfo = FlinkCompatibilityUtil.toTypeInfo(FlinkSchemaUtil.convert(context.project()));
 
 

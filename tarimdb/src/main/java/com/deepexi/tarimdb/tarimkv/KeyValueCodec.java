@@ -21,6 +21,9 @@ public class KeyValueCodec
     private static String KEY_SEPARATOR = "_";
 
     public long chunkID;
+
+    public int tableID;
+    public TarimKVProto.KeyValue valueKV;
     public TarimKVProto.KeyValueByte value;
     public TarimKVProto.KeyValueOp valueOp;
 
@@ -32,6 +35,14 @@ public class KeyValueCodec
         this.value = value;
         logger.debug("KeyValueCodec(), chunkID: " + this.chunkID 
                   + ", key: " + this.value.getKey());
+    }
+
+    public KeyValueCodec(int tableID, TarimKVProto.KeyValueByte value)
+    {
+        this.tableID = tableID;
+        this.value = value;
+        logger.debug("KeyValueCodec(), tableID: " + this.tableID
+                + ", key: " + this.value.getKey());
     }
 
     // Key固定编码：{chunkID}{separator}{primaryKey}
@@ -80,7 +91,7 @@ public class KeyValueCodec
         return internalKey;
     }
 
-    public static KeyValueCodec KeyDecode(String internalKey, byte[] value) throws TarimKVException
+    public static KeyValueCodec  KeyDecode(String internalKey, byte[] value) throws TarimKVException
     {
         String[] results = internalKey.split(KeyValueCodec.KEY_SEPARATOR);
         //logger.info("KeyDecode(), internalKey: " + internalKey
@@ -112,6 +123,35 @@ public class KeyValueCodec
         kvc.valueOp = kvBuilder.build();
         return kvc;
     }
+
+    public static String schemaKeyEncode(int tableID, String key)
+    {
+        //check
+        String internalKey = String.format("%d%s%s"
+                ,tableID
+                ,KeyValueCodec.KEY_SEPARATOR
+                ,key);
+        logger.debug("partitionKeyEncode(), tableID: " + tableID
+                + ", key: " + key
+                + ", internalKey : " + internalKey);
+        return internalKey;
+    }
+
+    public static KeyValueCodec schemaKeyDecode(String internalKey, String value) throws TarimKVException
+    {
+        String[] results = internalKey.split(KeyValueCodec.KEY_SEPARATOR);
+        //logger.info("KeyDecode(), internalKey: " + internalKey
+        //          + ", results: " + results.toString());
+        if(results.length != 2) return null; //throw new TarimKVException(Status.KEY_ENCODE_ERROR);
+        KeyValueCodec kvc = new KeyValueCodec();
+        kvc.tableID = Integer.parseInt(results[0]);
+        TarimKVProto.KeyValue.Builder kvBuilder = TarimKVProto.KeyValue.newBuilder();
+        kvBuilder.setKey(results[1]);
+        kvBuilder.setValue(value);
+        kvc.valueKV = kvBuilder.build();
+        return kvc;
+    }
+
     public static byte[] ValueEncode() 
     {
         // un-used
