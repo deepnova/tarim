@@ -283,7 +283,7 @@ public class Slot
                            + ", start key: " + startKey);
                 continue; // TODO: throw exception if necessary in futrue.
             }
-            KeyValueCodec kvc = KeyValueCodec.OpKeyDecode(new String(iter.key()));
+            KeyValueCodec kvc = KeyValueCodec.OpKeyDecode(new String(iter.key()), iter.value());
             if(kvc == null){
                 logger.warn("deltaScan() key not matched and ignore, result internal key: " + iter.key() 
                             + ", value: " + iter.value()

@@ -7,6 +7,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.io.InputSplitAssigner;
 import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
+import org.apache.iceberg.CombinedScanTask;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.encryption.EncryptionManager;
@@ -23,7 +24,8 @@ import org.deepexi.TarimDbAdapt;
 
 public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkInputSplit> {
 
-    private final Table table;
+    private final Table tarimTable;
+    private final Table icebergTable;
     private final FileIO io;
     private final EncryptionManager encryption;
     private final TarimScanContext context;
@@ -39,10 +41,11 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
 
     private int primaryIdInFlink;
 
-    TarimFlinkInputFormat(TarimDbAdapt tarimDbAdapt, Table table, Schema tableSchema, FileIO io, EncryptionManager encryption,
+    TarimFlinkInputFormat(TarimDbAdapt tarimDbAdapt, Table tarimTable, Table icebergTable, Schema tableSchema, FileIO io, EncryptionManager encryption,
                           TarimScanContext context) {
         this.tarimDbAdapt = tarimDbAdapt;
-        this.table = table;
+        this.tarimTable = tarimTable;
+        this.icebergTable = icebergTable;
         this.io = io;
         this.encryption = encryption;
         this.context = context;
@@ -60,7 +63,7 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
     @Override
     public TarimFlinkInputSplit[] createInputSplits(int minNumSplits) {
         // Called in Job manager, so it is OK to load table from catalog.
-        return TarimFlinkSplitPlanner.planInputSplits(table, context);
+        return TarimFlinkSplitPlanner.planInputSplits(tarimTable, icebergTable, context);
     }
 
     @Override
@@ -77,7 +80,16 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
         this.iterator = new DataIterator<>(rowDataReader, split.getTask(), io, encryption);
         //todo get the deltaData from tarimDb
         try {
-            deltaData = tarimDbAdapt.getDeltaData(((TarimCombinedScanTask)split.getTask()).getTrunk());
+            TarimCombinedScanTask task = (TarimCombinedScanTask)split.getTask();
+            deltaData = tarimDbAdapt.getDeltaData(
+                    task.getTableID(),
+                    task.getType(),
+                    task.getPartitionID(),
+                    task.getSchemaJson(),
+                    task.getScanHandle(),
+                    task.getHost(),
+                    task.getPort());
+
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }

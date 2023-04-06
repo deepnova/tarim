@@ -39,7 +39,11 @@ public class TarimKVClient {
         this.lMetadata = lMetadata;
     }
 
-    public int init() throws Exception, IllegalArgumentException, TarimKVException 
+    public KVLocalMetadata getKVLocalMetadata(){
+        return this.lMetadata;
+    }
+
+    public int init() throws Exception
     {
         getKVMetadata();
         kvLocal = new TarimKVLocal(metaClient, lMetadata);

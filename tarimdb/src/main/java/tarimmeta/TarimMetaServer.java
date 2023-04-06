@@ -6,6 +6,7 @@ import com.deepexi.rpc.TarimExecutor;
 import com.deepexi.rpc.TarimKVProto;
 import com.deepexi.rpc.TarimProto;
 import com.deepexi.tarimdb.util.Common;
+import org.apache.commons.codec.digest.MurmurHash3;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.avro.AvroSchemaUtil;
 import org.apache.iceberg.expressions.Evaluator;
@@ -19,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 import static com.deepexi.tarimdb.tarimkv.KeyValueCodec.schemaKeyEncode;
-import static com.deepexi.tarimdb.util.SerializeUtil.deserialize;
+import static com.deepexi.tarimdb.util.Common.*;
 
 
 public class TarimMetaServer {
@@ -47,7 +48,7 @@ public class TarimMetaServer {
 
     public int setPartitionMsg(int tableID, String partitionID) {
         String key = schemaKeyEncode(tableID, partitionID);
-        long chunkID = partitionID.hashCode() & 0x00000000FFFFFFFFL;
+        long chunkID = toChunkID(partitionID);
 
         kvClient.put(key, String.valueOf(chunkID));
         //if put fail, there should be exception
@@ -109,8 +110,9 @@ public class TarimMetaServer {
             boolean result = evaluator.eval(Common.Row.of(keyValue.getKey()));
 
             if (result) {
-                Long chunkID = Long.parseLong(keyValue.getValue());
-                KvNode node = localMetaClient.getMasterReplicaNode(chunkID);
+
+                Long hash = toHashCode(keyValue.getValue());
+                KvNode node = localMetaClient.getMasterReplicaNode(hash);
                 if (node != null){
                     throw new RuntimeException("the node is null!");
                 }else{
@@ -132,9 +134,21 @@ public class TarimMetaServer {
     TarimProto.PrepareScanResponse partitionTableScan(int tableID, byte[] conditions, List<String> partitionIDs) {
 
         Map<String, List<String>>  mapNodeToChunk = filterByConditions(tableID, conditions);
+        List<TarimProto.Partition> partitionAll = new ArrayList<>();
+
+        TarimProto.ScanInfo.Builder scanBuilder = TarimProto.ScanInfo.newBuilder();
+        TarimProto.MainAccount.Builder accountBuilder = TarimProto.MainAccount.newBuilder();
+        accountBuilder.setAccountType(2);
+        accountBuilder.setToken("");
+        accountBuilder.setUsername("");
+
+        TarimProto.PrepareScanResponse.Builder responseBuilder = TarimProto.PrepareScanResponse.newBuilder();
+        responseBuilder.setCode(0);
+        responseBuilder.setMsg("OK");
+        scanBuilder.setMainAccount(accountBuilder.build());
 
         if (mapNodeToChunk == null){
-            //todo
+            responseBuilder.setScanInfo(scanBuilder.build());
         }else{
             for (Map.Entry<String, List<String>> entry : mapNodeToChunk.entrySet()){
                 String key = entry.getKey();
@@ -147,15 +161,19 @@ public class TarimMetaServer {
 
                 TarimDBMetaClient client = new TarimDBMetaClient(host, port);
                 TarimProto.PrepareScanResponse response = client.prepareRequest(tableID, entry.getValue());
-
                 if (response.getCode() == 0){
+                    List<TarimProto.Partition> partitionList = response.getScanInfo().getPartitionsList();
 
+                    partitionAll.addAll(partitionList);
+                }else{
+                    logger.error("fail to prepareScan to tarimDB!");
                 }
-
             }
+
+            scanBuilder.addAllPartitions(partitionAll);
+            responseBuilder.setScanInfo(scanBuilder.build());
         }
 
-
-        return null;
+        return responseBuilder.build();
     }
 }

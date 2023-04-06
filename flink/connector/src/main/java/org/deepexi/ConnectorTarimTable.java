@@ -26,7 +26,7 @@ public class ConnectorTarimTable implements Table, Serializable {
 
     public TarimMetaClient metaClient;
 
-    public List<ScanPartition> scanList;
+    private List<ScanPartition> scanList;
 
     public ConnectorTarimTable(String name){
         this.name = name;
@@ -71,6 +71,10 @@ public class ConnectorTarimTable implements Table, Serializable {
 
     public void setScanList(List<ScanPartition> list){
         this.scanList = list;
+    }
+
+    public List<ScanPartition> getScanList(){
+        return this.scanList;
     }
     @Override
     public void refresh() {

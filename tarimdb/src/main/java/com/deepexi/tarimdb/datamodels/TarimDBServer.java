@@ -1,5 +1,6 @@
 package com.deepexi.tarimdb.datamodels;
 
+import com.deepexi.tarimdb.util.TarimKVException;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.BinaryDecoder;
@@ -18,6 +19,7 @@ import com.deepexi.rpc.TarimKVProto;
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.util.List;
 
 /**
  * TarimDB
@@ -45,9 +47,7 @@ public class TarimDBServer extends TarimGrpc.TarimImplBase {
         String primaryKey = request.getPrimaryKey();
         //todo check the data, should not be null
 
-        System.out.println("TableID:" + tableID);
-        System.out.println("partitionID:" + partitionID);
-
+        logger.info("TableID:{}, partitionID:{}" , tableID , partitionID);
 
         int result = db.insertMsgProc(tableID, partitionID, primaryKey, record);
         if (result != 0){
@@ -70,13 +70,34 @@ public class TarimDBServer extends TarimGrpc.TarimImplBase {
     public void prepareScan(TarimProto.PrepareMetaNodeScanRequest request,
                             StreamObserver<TarimProto.PrepareScanResponse> responseObserver)
     {
-        //TODO
+        int tableID = request.getTableID();
+        List<String> partitionIDs = request.getPartitionIDList();
+        TarimProto.PrepareScanResponse response = null;
+        try {
+            response = db.preScan(tableID, partitionIDs);
+        } catch (TarimKVException e) {
+            throw new RuntimeException(e);
+        }
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
     }
 
     public void scan(TarimProto.ScanRequest request,
                      StreamObserver<TarimProto.ScanResponse> responseObserver) 
     {
-        //TODO
+        int tableID = request.getTableID();
+        long scanHandle = request.getScanHandler();
+        String partitionID = request.getPartitionID();
+        TarimProto.ScanResponse response = null;
+
+        try {
+            response = db.scanMsgProc(tableID, scanHandle, partitionID);
+        } catch (TarimKVException e) {
+            throw new RuntimeException(e);
+        }
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
     }
 }
 

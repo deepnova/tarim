@@ -35,4 +35,15 @@ public class TarimDbClient {
         TarimProto.DbStatusResponse response = blockingStub.insert(request);
         return response.getCode();
     }
+
+    public TarimProto.ScanResponse scanRequest(int tableID, long handle, String partitionID){
+        TarimProto.ScanRequest request = TarimProto.ScanRequest.newBuilder()
+                .setTableID(tableID)
+                .setPartitionID(partitionID)
+                .setScanHandler(handle)
+                .build();
+
+        TarimProto.ScanResponse response = blockingStub.scan(request);
+        return response;
+    }
 }

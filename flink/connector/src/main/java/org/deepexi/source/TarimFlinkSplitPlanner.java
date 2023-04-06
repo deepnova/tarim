@@ -1,12 +1,21 @@
 package org.deepexi.source;
 
+import org.apache.flink.table.catalog.ObjectPath;
+import org.apache.flink.table.types.logical.RowType;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.*;
+import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.expressions.Expression;
 
+import org.apache.iceberg.flink.CatalogLoader;
+import org.apache.iceberg.flink.FlinkSchemaUtil;
+import org.apache.iceberg.flink.TableLoader;
 import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.relocated.com.google.common.collect.FluentIterable;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.transforms.Transform;
+import org.deepexi.ConnectorTarimTable;
 
 import java.util.*;
 
@@ -14,16 +23,24 @@ public class TarimFlinkSplitPlanner {
     private TarimFlinkSplitPlanner() {
     }
 
-    static TarimFlinkInputSplit[] planInputSplits(Table table, TarimScanContext context) {
+    //iceberg table to read parquet data
+    //tarim table to load delta data
+    static TarimFlinkInputSplit[] planInputSplits(Table tarimTable, Table icebergTable, TarimScanContext context) {
+
+
+        RowType rowType = FlinkSchemaUtil.convert(tarimTable.schema());
 
         if(context.datafileFromIceberg()){
             //tmp: get the split for test
-            List<String> trunkList = new ArrayList<>();
-            trunkList.add("d1");
-            trunkList.add("d3");
-            trunkList.add("d5");
+            List<ScanPartition> partitionsList = ((ConnectorTarimTable) tarimTable).getScanList();
+            List<String> partitionList = new ArrayList<>();
+
+            for(ScanPartition partition: partitionsList){
+                partitionList.add(partition.getPartitionID());
+            }
+
             List<FileScanTask> tasks = Lists.newArrayList(
-                    table.newScan().planFiles());
+                    icebergTable.newScan().planFiles());
 
 //            Iterable<FileScanTask> splitTasks = FluentIterable
 //                    .from(tasks)
@@ -35,7 +52,7 @@ public class TarimFlinkSplitPlanner {
             List<TarimCombinedScanTask> scans = new ArrayList<>();
 
             for (FileScanTask task : tasks){
-                PartitionSpec sp = table.spec();
+                PartitionSpec sp = icebergTable.spec();
 
                 // List<PartitionField> tt = load.spec().getFieldsBySourceId(1);
 
@@ -51,20 +68,28 @@ public class TarimFlinkSplitPlanner {
 
                 //test = task.file().partition().get(0, String.class);
 
-                for (int i =0; i < trunkList.size(); i++) {
+                for (int i =0; i < partitionList.size(); i++) {
+                    String partitionID = partitionList.get(i);
 
-                    String trunkId = trunkList.get(i);
+                    if (test.equals(partitionID)){
+                        if (!map.containsKey(partitionID)){
 
-                    if (test.equals(trunkId)){
-                        if (!map.containsKey(trunkId)){
+                            map.put(partitionID, index);
 
-                            map.put(trunkId, index);
-
-                            scans.add(new TarimCombinedScanTask(trunkId, new ArrayList<>()));
+                            scans.add(new TarimCombinedScanTask(
+                                    ((ConnectorTarimTable) tarimTable).getTableId(),
+                                    rowType,
+                                    ((ConnectorTarimTable) tarimTable).getSchemaJson(),
+                                    partitionID,
+                                    partitionsList.get(i).scanHandler,
+                                    partitionsList.get(i).host,
+                                    partitionsList.get(i).port,
+                                    new ArrayList<>()));
                             index++;
                         }
-                        scans.get(map.get(trunkId)).addTask(task);
-                        scans.get(map.get(trunkId)).setTrunk(trunkId);
+                        scans.get(map.get(partitionID)).addTask(task);
+                        //scans.get(map.get(trunkId)).setTrunk(trunkId);
+                        //scans.get(map.get(trunkId)).setScanHandle(partitionsList.get(i).scanHandler);
                     }
                 }
             }

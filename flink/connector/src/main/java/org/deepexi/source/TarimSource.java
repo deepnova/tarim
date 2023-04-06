@@ -27,6 +27,8 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import org.deepexi.ConnectorTarimTable;
 import org.deepexi.TarimDbAdapt;
 
 import static org.deepexi.TarimUtil.serialize;
@@ -41,7 +43,8 @@ public class TarimSource {
 
     public static class Builder {
         private StreamExecutionEnvironment env;
-        private Table table;
+        private Table icebergTable;
+        private Table tarimTable;
         private TableLoader tableLoader;
         private TableSchema projectedSchema;
         private ReadableConfig readableConfig = new Configuration();
@@ -51,7 +54,7 @@ public class TarimSource {
         private TarimMetaClient metaClient;
 
         public Builder table(Table newTable) {
-            this.table = newTable;
+            this.tarimTable = newTable;
             return this;
         }
 
@@ -158,11 +161,14 @@ public class TarimSource {
             TarimProto.ScanInfo res = result.getScanInfo();
             List<TarimProto.Partition> patitionList = res.getPartitionsList();
 
-
             List<ScanPartition> scanList = new ArrayList<>();
             for(TarimProto.Partition partition : patitionList){
-                scanList.add(new ScanPartition(partition.getPartitionID(), partition.getScanHandler(), partition.getMergePolicy(), partition.getMainPathsList()));
+                scanList.add(new ScanPartition(partition.getPartitionID(), partition.getScanHandler(),
+                        partition.getMergePolicy(), partition.getMainPathsList(),
+                        partition.getHost(), partition.getPort()));
             }
+
+            ((ConnectorTarimTable)tarimTable).setScanList(scanList);
 
             TypeInformation<RowData> typeInfo = FlinkCompatibilityUtil.toTypeInfo(FlinkSchemaUtil.convert(context.project()));
 
@@ -175,8 +181,8 @@ public class TarimSource {
                 //todo
                 //StreamingMonitorFunction function = new StreamingMonitorFunction(tableLoader, context);
 
-                String monitorFunctionName = String.format("Iceberg table (%s) monitor", table);
-                String readerOperatorName = String.format("Iceberg table (%s) reader", table);
+                String monitorFunctionName = String.format("Iceberg table (%s) monitor", tarimTable);
+                String readerOperatorName = String.format("Iceberg table (%s) reader", tarimTable);
                 System.out.println("monitorFunctionName" + monitorFunctionName);
                 //return env.addSource(function, monitorFunctionName)
                 //        .transform(readerOperatorName, typeInfo, StreamingReaderOperator.factory(format));
@@ -190,21 +196,21 @@ public class TarimSource {
             Schema icebergSchema;
             FileIO io;
             EncryptionManager encryption;
-            if (table == null) {
+            if (icebergTable == null) {
                 // load required fields by table loader.
                 tableLoader.open();
                 try (TableLoader loader = tableLoader) {
-                    table = loader.loadTable();
-                    icebergSchema = table.schema();
-                    io = table.io();
-                    encryption = table.encryption();
+                    icebergTable = loader.loadTable();
+                    icebergSchema = icebergTable.schema();
+                    io = icebergTable.io();
+                    encryption = icebergTable.encryption();
                 } catch (IOException e) {
                     throw new UncheckedIOException(e);
                 }
             } else {
-                icebergSchema = table.schema();
-                io = table.io();
-                encryption = table.encryption();
+                icebergSchema = icebergTable.schema();
+                io = icebergTable.io();
+                encryption = icebergTable.encryption();
             }
 
             if (projectedSchema == null) {
@@ -213,9 +219,9 @@ public class TarimSource {
                 contextBuilder.project(FlinkSchemaUtil.convert(icebergSchema, projectedSchema));
             }
 
-            //todo, tmp for the table
-
-            return new TarimFlinkInputFormat(tarimDbAdapt, table, icebergSchema, io, encryption, contextBuilder.build());
+            //iceberg table to read parquet data
+            //tarim table to load delta data
+            return new TarimFlinkInputFormat(tarimDbAdapt, tarimTable, icebergTable, icebergSchema, io, encryption, contextBuilder.build());
         }
 
         int inferParallelism(FlinkInputFormat format, TarimScanContext context) {
@@ -230,7 +236,7 @@ public class TarimSource {
                     FlinkInputSplit[] splits = format.createInputSplits(0);
                     splitNum = splits.length;
                 } catch (IOException e) {
-                    throw new UncheckedIOException("Failed to create iceberg input splits for table: " + table, e);
+                    throw new UncheckedIOException("Failed to create iceberg input splits for table: " + tarimTable, e);
                 }
 
                 parallelism = Math.min(splitNum, maxInferParallelism);

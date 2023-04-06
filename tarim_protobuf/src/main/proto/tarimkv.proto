@@ -46,11 +46,6 @@ message RGroupItem {
     repeated Slot slots = 3;
 }
 
-message Chunk {
-    int32 tableID = 1;
-    int64 chunkID = 2;
-}
-
 message KeyValue {
     string key = 2;
     string value = 3;
@@ -64,7 +59,7 @@ message KeyValueByte {
 message KeyValueOp {
     int32 op = 1; // 1: new, 2: delete
     string key = 2;
-    string value = 3;
+    bytes value = 3;
 }
 
 message DistributionInfo {
@@ -88,7 +83,7 @@ message DataDistributionResponse {
 
 message PutRequest {
     int32 tableID = 1;
-    int64 chunkID = 2;
+    int64  chunkID = 2;
     repeated KeyValueByte values = 3;
 }
 
@@ -118,6 +113,23 @@ message DeleteRequest {
     string key = 3;
 }
 
+message PrepareKVScanRequest {
+    int32 tableID = 1;
+    repeated int64 chunkIDs = 2;
+}
+
+message PrepareKVResponse {
+    int32 code = 1;
+    string msg = 2;
+    repeated Chunk chunks = 3;
+}
+message Chunk {
+    int64 chunkIDs = 1;
+    int64 scanHandler = 2;
+    // only implement 'client_merge' policy first
+    int32 mergePolicy = 3; // 0：none_merge, 1：client_merge, 2：server_merge
+    repeated string mainPaths = 4;
+}
 service TarimKVMeta {
     rpc getDataDistribution(DataDistributionRequest) returns (DataDistributionResponse);
 }
@@ -127,4 +139,5 @@ service TarimKV { // for DB metadata
     rpc get(GetRequest) returns (GetResponse);
     rpc prefixSeek(PrefixSeekRequest) returns (GetResponse);
     rpc delete(DeleteRequest) returns (StatusResponse);
+    rpc preScan(PrepareKVScanRequest) returns (PrepareKVResponse);
 }

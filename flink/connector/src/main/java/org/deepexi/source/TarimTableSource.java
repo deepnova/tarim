@@ -13,6 +13,7 @@ import org.apache.flink.table.connector.source.abilities.SupportsLimitPushDown;
 import org.apache.flink.table.connector.source.abilities.SupportsProjectionPushDown;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.expressions.ResolvedExpression;
+import org.apache.iceberg.Table;
 import org.apache.iceberg.expressions.Expression;
 import org.apache.iceberg.flink.FlinkFilters;
 import org.apache.iceberg.flink.TableLoader;
@@ -34,6 +35,8 @@ public class TarimTableSource implements ScanTableSource, SupportsProjectionPush
     private final boolean isLimitPushDown;
     private final ReadableConfig readableConfig;
 
+    private Table tarimTable;
+
     private TarimTableSource(TarimTableSource toCopy) {
         this.tableLoader = toCopy.tableLoader;
         this.schema = toCopy.schema;
@@ -45,14 +48,15 @@ public class TarimTableSource implements ScanTableSource, SupportsProjectionPush
         this.readableConfig = toCopy.readableConfig;
     }
 
-    public TarimTableSource(TableLoader tableLoader, TableSchema schema, Map<String, String> properties,
+    public TarimTableSource(Table tarimTable, TableLoader tableLoader, TableSchema schema, Map<String, String> properties,
                             ReadableConfig readableConfig) {
-        this(tableLoader, schema, properties, null, false, -1, ImmutableList.of(), readableConfig);
+        this(tarimTable, tableLoader, schema, properties, null, false, -1, ImmutableList.of(), readableConfig);
     }
 
-    private TarimTableSource(TableLoader tableLoader, TableSchema schema, Map<String, String> properties,
+    private TarimTableSource(Table tarimTable, TableLoader tableLoader, TableSchema schema, Map<String, String> properties,
                                int[] projectedFields, boolean isLimitPushDown,
                                long limit, List<Expression> filters, ReadableConfig readableConfig) {
+        this.tarimTable = tarimTable;
         this.tableLoader = tableLoader;
         this.schema = schema;
         this.properties = properties;
@@ -68,6 +72,7 @@ public class TarimTableSource implements ScanTableSource, SupportsProjectionPush
                 .env(execEnv)
                 .tableLoader(tableLoader)
                 .properties(properties)
+                .table(tarimTable)
                 //.project(getProjectedSchema())
                //.limit(limit)
                 .filters(filters)

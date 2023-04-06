@@ -106,20 +106,25 @@ public class KeyValueCodec
         return kvc;
     }
 
-    public static KeyValueCodec OpKeyDecode(String internalKey) throws TarimKVException
+    public static KeyValueCodec OpKeyDecode(String internalKey, byte[] value) throws TarimKVException
     {
         String[] result = internalKey.split(KeyValueCodec.KEY_SEPARATOR);
-        if(!(result.length == 2 || result.length == 3)) return null; //throw new TarimKVException(Status.KEY_ENCODE_ERROR);
+        //support op=1 first
+        //if(!(result.length == 2 || result.length == 3)) return null; //throw new TarimKVException(Status.KEY_ENCODE_ERROR);
         KeyValueCodec kvc = new KeyValueCodec();
         kvc.chunkID = Long.parseLong(result[0]);
         TarimKVProto.KeyValueOp.Builder kvBuilder = TarimKVProto.KeyValueOp.newBuilder();
         kvBuilder.setKey(result[1]);
+        kvBuilder.setValue(ByteString.copyFrom(value));
+        /*
         if(result.length == 3)
         {
             if(result[2].equals("new")) kvBuilder.setOp(1);
             else if(result[2].equals("del")) kvBuilder.setOp(2);
             else kvBuilder.setOp(0); //TODO: error
         }
+         */
+        kvBuilder.setOp(1);
         kvc.valueOp = kvBuilder.build();
         return kvc;
     }

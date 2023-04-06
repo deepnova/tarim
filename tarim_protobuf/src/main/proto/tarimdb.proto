@@ -55,7 +55,7 @@ message InsertRequest {
 
 message LookupRequest {
     int32 tableID = 1;
-    string partitoinID = 2;
+    string partitionID = 2;
     string primaryKey = 3; //TODO: different data types
 }
 
@@ -71,6 +71,8 @@ message Partition {
     // only implement 'client_merge' policy first
     int32 mergePolicy = 3; // 0：none_merge, 1：client_merge, 2：server_merge
     repeated string mainPaths = 4;
+    string host = 5;
+    int32 port = 6;
 }
 message MainAccount {
     int32 accountType = 1; // 1：S3, 2：HDFS
@@ -100,8 +102,9 @@ message PrepareScanResponse {
 }
 
 message ScanRequest {
-    string partitionID = 1;
-    int64 scanHandler = 2;
+    int32 tableID = 1;
+    string partitionID = 2;
+    int64 scanHandler = 3;
     //TODO: more
 }
 
