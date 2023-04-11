@@ -1,7 +1,5 @@
 package com.deepexi;
 
-import com.deepexi.rpc.TarimKVProto;
-
 import java.io.Serializable;
 
 public class KvNode implements Serializable {
@@ -15,7 +13,7 @@ public class KvNode implements Serializable {
         this.host = node.host;
         this.port = node.port;
     }
-    public String toString(TarimKVProto.Node node) {
+    public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append(host);
         sb.append(":");

@@ -120,7 +120,6 @@ public class TarimDB extends AbstractDataModel {
 
         TarimProto.Partition.Builder partitionBuilder = TarimProto.Partition.newBuilder();
 
-
         List<TarimProto.Partition> partitions = new ArrayList<>();
 
         int size = partitionIDs.size();

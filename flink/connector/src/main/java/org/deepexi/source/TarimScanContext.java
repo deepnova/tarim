@@ -68,10 +68,14 @@ public class TarimScanContext implements Serializable {
     private final boolean includeColumnStats;
 
     private final boolean datafileFromIceberg;
+    private boolean partitionKeyFilter;
+    private boolean primaryKeyFilter;
+    private boolean otherFilter;
     private TarimScanContext(boolean caseSensitive, Long snapshotId, Long startSnapshotId, Long endSnapshotId,
                         Long asOfTimestamp, Long splitSize, Integer splitLookback, Long splitOpenFileCost,
                         boolean isStreaming, Duration monitorInterval, String nameMapping,
-                        Schema schema, List<Expression> filters, long limit, boolean includeColumnStats, boolean datafileFromIceberg) {
+                        Schema schema, List<Expression> filters, long limit, boolean includeColumnStats, boolean datafileFromIceberg,
+                        boolean partitionKeyFilter, boolean primaryKeyFilter, boolean otherFilter) {
         this.caseSensitive = caseSensitive;
         this.snapshotId = snapshotId;
         this.startSnapshotId = startSnapshotId;
@@ -89,8 +93,22 @@ public class TarimScanContext implements Serializable {
         this.limit = limit;
         this.includeColumnStats = includeColumnStats;
         this.datafileFromIceberg = datafileFromIceberg;
+        this.partitionKeyFilter = partitionKeyFilter;
+        this.primaryKeyFilter = primaryKeyFilter;
+        this.otherFilter = otherFilter;
     }
 
+    public boolean getPartitionKeyFilter(){
+        return this.partitionKeyFilter;
+    }
+
+    public boolean getPrimaryKeyFilter(){
+        return this.primaryKeyFilter;
+    }
+
+    public boolean getOtherFilter(){
+        return this.otherFilter;
+    }
     boolean caseSensitive() {
         return caseSensitive;
     }
@@ -216,9 +234,25 @@ public class TarimScanContext implements Serializable {
         private boolean includeColumnStats = INCLUDE_COLUMN_STATS.defaultValue();
 
         private boolean datafileFromIceberg = DATAFILE_FROM_ICEBERG.defaultValue();
+
+        private boolean partitionKeyFilter;
+        private boolean primaryKeyFilter;
+        private boolean otherFilter;
         private Builder() {
         }
+        Builder partitionKeyFilter(boolean partitionKeyFilter) {
+            this.partitionKeyFilter = partitionKeyFilter;
+            return this;
+        }
+        Builder primaryKeyFilter(boolean primaryKeyFilter) {
+            this.primaryKeyFilter = primaryKeyFilter;
+            return this;
+        }
 
+        Builder otherFilter(boolean otherFilter) {
+            this.otherFilter = otherFilter;
+            return this;
+        }
         Builder caseSensitive(boolean newCaseSensitive) {
             this.caseSensitive = newCaseSensitive;
             return this;
@@ -321,11 +355,24 @@ public class TarimScanContext implements Serializable {
             return new TarimScanContext(caseSensitive, snapshotId, startSnapshotId,
                     endSnapshotId, asOfTimestamp, splitSize, splitLookback,
                     splitOpenFileCost, isStreaming, monitorInterval, nameMapping, projectedSchema,
-                    filters, limit, includeColumnStats, datafileFromIceberg);
+                    filters, limit, includeColumnStats, datafileFromIceberg,
+                    partitionKeyFilter, primaryKeyFilter, otherFilter);
         }
 
         public List<Expression> getFilters(){
             return this.filters;
+        }
+
+        public boolean getPartitionKeyFilter(){
+            return partitionKeyFilter;
+        }
+
+        public boolean getPrimaryKeyFilter(){
+            return primaryKeyFilter;
+        }
+
+        public boolean getOtherFilter(){
+            return otherFilter;
         }
     }
 }

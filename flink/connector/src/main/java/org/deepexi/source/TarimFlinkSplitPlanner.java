@@ -81,9 +81,9 @@ public class TarimFlinkSplitPlanner {
                                     rowType,
                                     ((ConnectorTarimTable) tarimTable).getSchemaJson(),
                                     partitionID,
-                                    partitionsList.get(i).scanHandler,
-                                    partitionsList.get(i).host,
-                                    partitionsList.get(i).port,
+                                    partitionsList.get(i).getScanHandler(),
+                                    partitionsList.get(i).getHost(),
+                                    partitionsList.get(i).getPort(),
                                     new ArrayList<>()));
                             index++;
                         }

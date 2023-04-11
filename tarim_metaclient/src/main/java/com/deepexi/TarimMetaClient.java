@@ -206,10 +206,11 @@ public class TarimMetaClient implements Serializable {
                 .setTblName(tableName)
                 .build();
         TarimProto.GetTableResponse response = blockStub.getTable(request);
+        channel.shutdown();
         return response;
     }
 
-    public TarimProto.PrepareScanResponse preScan(int tableID, byte[] selections, List<String> columns, List<String> partitionIDs){
+    public TarimProto.PrepareScanResponse preScan(int tableID, boolean allPartition, byte[] selections, List<String> columns, List<String> partitionIDs){
         ManagedChannel channel;//客户端与服务器的通信channel
         TarimMetaGrpc.TarimMetaBlockingStub blockStub;
         channel = ManagedChannelBuilder.forAddress(metaHost, metaPort).usePlaintext().build();//指定grpc服务器地址和端口初始化通信channel
@@ -219,8 +220,6 @@ public class TarimMetaClient implements Serializable {
         TarimExecutor.Selection selection = TarimExecutor.Selection.newBuilder().setConditions(ByteString.copyFrom(selections)).build();
         TarimExecutor.PartitionTableScan scan = TarimExecutor.PartitionTableScan.newBuilder()
                 .setTableID(tableID)
-                .addAllColumns(columns)
-                .addAllPartitionIds(partitionIDs)
                 .build();
 
         TarimExecutor.Executor executor = executorBuilder
@@ -230,11 +229,13 @@ public class TarimMetaClient implements Serializable {
                 .build();
 
         TarimProto.PrepareScanRequest request = TarimProto.PrepareScanRequest.newBuilder()
+                .setAllPartition(allPartition)
                 .setTableID(tableID)
                 .addExecutors(0, executor)
                 .build();
 
         TarimProto.PrepareScanResponse response = blockStub.prepareScan(request);
+        channel.shutdown();
         return response;
 
     }
@@ -251,6 +252,7 @@ public class TarimMetaClient implements Serializable {
                 .build();
 
         TarimProto.DbStatusResponse response = blockStub.setPartition(request);
+        channel.shutdown();
         return response;
     }
 }

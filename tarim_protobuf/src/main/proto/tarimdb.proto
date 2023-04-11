@@ -87,7 +87,8 @@ message ScanInfo {
 
 message PrepareScanRequest {
     int32 tableID = 1;
-    repeated Executor executors = 2;
+    bool allPartition = 2;
+    repeated Executor executors = 3;
 }
 
 message PrepareMetaNodeScanRequest {

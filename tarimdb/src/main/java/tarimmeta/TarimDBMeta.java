@@ -79,10 +79,11 @@ public class TarimDBMeta extends TarimMetaGrpc.TarimMetaImplBase {
         TarimExecutor.ExecType execType = executors.getExecType();
         byte[] conditions = executors.getSelection().getConditions().toByteArray();
         List<String> partitionIDs = executors.getPartitionScan().getPartitionIdsList();
+        boolean allFlag = request.getAllPartition();
 
         //todo,  don't support projection now, columns no use
         List<String> columns  = executors.getPartitionScan().getColumnsList();
-        TarimProto.PrepareScanResponse response = metaServer.prepareScan(tableID, execType, conditions, partitionIDs);
+        TarimProto.PrepareScanResponse response = metaServer.prepareScan(tableID, allFlag, execType, conditions, partitionIDs);
 
         responseObserver.onNext(response);
         responseObserver.onCompleted();

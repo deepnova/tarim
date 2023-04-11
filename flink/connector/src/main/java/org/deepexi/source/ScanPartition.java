@@ -1,14 +1,15 @@
 package org.deepexi.source;
 
+import java.io.Serializable;
 import java.util.List;
 
-public class ScanPartition {
-    String partitionID;
-    long scanHandler;
-    int mergePolicy;
-    List<String> filePath;
-    String host;
-    int port;
+public class ScanPartition implements Serializable {
+    private String partitionID;
+    private long scanHandler;
+    private int mergePolicy;
+    private List<String> filePath;
+    private String host;
+    private int port;
 
     public ScanPartition(String partitionID, long scanHandler, int mergePolicy, List<String> filePath, String host, int port){
         this.partitionID = partitionID;

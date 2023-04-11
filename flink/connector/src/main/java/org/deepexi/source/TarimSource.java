@@ -49,9 +49,13 @@ public class TarimSource {
         private TableSchema projectedSchema;
         private ReadableConfig readableConfig = new Configuration();
         public TarimDbAdapt tarimDbAdapt = new TarimDbAdapt(0, 0, null);
-        private final TarimScanContext.Builder contextBuilder = TarimScanContext.builder();
+        private final TarimScanContext.Builder  contextBuilder = TarimScanContext.builder();
 
         private TarimMetaClient metaClient;
+
+        private boolean primaryKeyFilter;
+        private boolean partitionKeyFilter;
+        private boolean otherFilter;
 
         public Builder table(Table newTable) {
             this.tarimTable = newTable;
@@ -143,50 +147,90 @@ public class TarimSource {
             this.readableConfig = config;
             return this;
         }
+
+        public Builder primaryKeyFilter(boolean primaryKeyFilter) {
+            contextBuilder.primaryKeyFilter(primaryKeyFilter);
+            return this;
+        }
+
+        public Builder partitionKeyFilter(boolean partitionKeyFilter) {
+            contextBuilder.partitionKeyFilter(partitionKeyFilter);
+            return this;
+        }
+
+        public Builder otherFilter(boolean otherFilter) {
+            contextBuilder.otherFilter(otherFilter);
+            return this;
+        }
+
         public DataStream<RowData> build() {
             Preconditions.checkNotNull(env, "StreamExecutionEnvironment should not be null");
+            boolean allPartitionFlag = false;
+            boolean doLookup = false;
 
-            TarimFlinkInputFormat format = buildFormat();
-
-            TarimScanContext context = contextBuilder.build();
-
-            metaClient = new TarimMetaClient("127.0.0.1", 1301);
-
-            //todo, now the list for columns and partitionID are null
-            TarimProto.PrepareScanResponse result = metaClient.preScan(100, serialize(contextBuilder.getFilters()), new ArrayList<>(), new ArrayList<>());
-            if (result.getCode() != 0){
-                throw new RuntimeException("the result of preScan is incorrect!!");
+            if (contextBuilder.getPartitionKeyFilter()){
+                if (!contextBuilder.getPrimaryKeyFilter()){
+                    //do scan, prepareScan
+                    if (contextBuilder.getOtherFilter()){
+                        allPartitionFlag = true;
+                    }
+                }else{
+                    if (contextBuilder.getOtherFilter()){
+                        allPartitionFlag = true;
+                    }else{
+                        doLookup = true;
+                    }
+                }
+            }else{
+                allPartitionFlag = true;
             }
 
-            TarimProto.ScanInfo res = result.getScanInfo();
-            List<TarimProto.Partition> patitionList = res.getPartitionsList();
-
-            List<ScanPartition> scanList = new ArrayList<>();
-            for(TarimProto.Partition partition : patitionList){
-                scanList.add(new ScanPartition(partition.getPartitionID(), partition.getScanHandler(),
-                        partition.getMergePolicy(), partition.getMainPathsList(),
-                        partition.getHost(), partition.getPort()));
-            }
-
-            ((ConnectorTarimTable)tarimTable).setScanList(scanList);
-
-            TypeInformation<RowData> typeInfo = FlinkCompatibilityUtil.toTypeInfo(FlinkSchemaUtil.convert(context.project()));
-
-
-            if (!context.isStreaming()) {
-                //int parallelism = inferParallelism(format, context);
-                int parallelism = 1;
-                return env.createInput(format, typeInfo).setParallelism(parallelism);
-            } else {
+            if (doLookup){
                 //todo
-                //StreamingMonitorFunction function = new StreamingMonitorFunction(tableLoader, context);
-
-                String monitorFunctionName = String.format("Iceberg table (%s) monitor", tarimTable);
-                String readerOperatorName = String.format("Iceberg table (%s) reader", tarimTable);
-                System.out.println("monitorFunctionName" + monitorFunctionName);
-                //return env.addSource(function, monitorFunctionName)
-                //        .transform(readerOperatorName, typeInfo, StreamingReaderOperator.factory(format));
                 return null;
+            }else{
+                metaClient = new TarimMetaClient("127.0.0.1", 1301);
+                //todo, now the list for columns and partitionID are null
+                TarimProto.PrepareScanResponse result = metaClient.preScan(100, allPartitionFlag, serialize(contextBuilder.getFilters()), new ArrayList<>(), new ArrayList<>());
+                if (result.getCode() != 0){
+                    throw new RuntimeException("the result of preScan is incorrect!!");
+                }
+
+                TarimProto.ScanInfo res = result.getScanInfo();
+                List<TarimProto.Partition> patitionList = res.getPartitionsList();
+
+                List<ScanPartition> scanList = new ArrayList<>();
+                for(TarimProto.Partition partition : patitionList){
+                    List<String> list = new ArrayList<>();
+                    for (String path : partition.getMainPathsList()){
+                        list.add(path);
+                    }
+                    scanList.add(new ScanPartition(partition.getPartitionID(), partition.getScanHandler(),
+                            partition.getMergePolicy(), list,
+                            partition.getHost(), partition.getPort()));
+                }
+
+                ((ConnectorTarimTable)tarimTable).setScanList(scanList);
+                TarimFlinkInputFormat format = buildFormat();
+                TarimScanContext context = contextBuilder.build();
+                TypeInformation<RowData> typeInfo = FlinkCompatibilityUtil.toTypeInfo(FlinkSchemaUtil.convert(context.project()));
+
+
+                if (!context.isStreaming()) {
+                    //int parallelism = inferParallelism(format, context);
+                    int parallelism = 1;
+                    return env.createInput(format, typeInfo).setParallelism(parallelism);
+                } else {
+                    //todo
+                    //StreamingMonitorFunction function = new StreamingMonitorFunction(tableLoader, context);
+
+                    String monitorFunctionName = String.format("Iceberg table (%s) monitor", tarimTable);
+                    String readerOperatorName = String.format("Iceberg table (%s) reader", tarimTable);
+                    System.out.println("monitorFunctionName" + monitorFunctionName);
+                    //return env.addSource(function, monitorFunctionName)
+                    //        .transform(readerOperatorName, typeInfo, StreamingReaderOperator.factory(format));
+                    return null;
+                }
             }
         }
 

@@ -226,7 +226,7 @@ public class Slot
             }
             String key = new String(iter.key());
             byte[] value = iter.value();
-            KeyValueCodec kvc = KeyValueCodec.schemaKeyDecode(key, Arrays.toString(value));
+            KeyValueCodec kvc = KeyValueCodec.schemaKeyDecode(key, new String(value));
             if(kvc == null){
                 logger.warn("prefixSeek() key not matched and ignore, result internal key: " + key
                         + ", value: " + value
