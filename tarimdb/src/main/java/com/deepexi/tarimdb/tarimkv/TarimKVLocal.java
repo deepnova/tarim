@@ -266,7 +266,7 @@ public class TarimKVLocal {
     }
 
     // ifComplete is output parameter, scan not complete until ifComplete == true.
-    public List<TarimKVProto.KeyValueOp> deltaChunkScan(KVSchema.DeltaScanParam param, boolean ifComplete)
+    public TarimKVProto.RangeData deltaChunkScan(KVSchema.DeltaScanParam param, boolean ifComplete)
             throws RocksDBException, TarimKVException
     {
         //TODO: support lastKey and scanSize for full scan
@@ -278,7 +278,9 @@ public class TarimKVLocal {
         ColumnFamilyHandle cfh = slot.getColumnFamilyHandle(cfName);
         String startKey = KeyValueCodec.ChunkOnlyKeyPrefixEncode(param.chunkID);
         ReadOptions readOpts = new ReadOptions();
-        List<TarimKVProto.KeyValueOp> results = slot.deltaScan(readOpts, cfh, param.scanHandler, startKey);
+
+        TarimKVProto.RangeData results = slot.deltaScan(readOpts, cfh, param.scanHandler, startKey, param.scanSize,
+                param.planID, param.lowerBound, param.upperBound, param.lowerBoundType, param.upperBoundType);
         return results;
     }
 

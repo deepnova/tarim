@@ -72,15 +72,63 @@ public class TarimDbAdapt implements Serializable {
         logger.info("send getLastommittedCheckpointId to trimDB");
         return -1L;
     }
+    public DeltaRecords getDeltaData(int tableID, RowType rowType, String partitionID, String schemaJson, long handle, String host, int port, String planID,
+                                        int scanSize, String lowerBound, String upperBound, int lowerBoundType, int upperBoundType) throws InterruptedException {
 
-    public List<DeltaData> getDeltaData(int tableID, RowType rowType, String partitionID, String schemaJson, long handle, String host, int port) throws InterruptedException {
+        logger.info("getDeltaData to tarimDB");
+        List<DeltaData> datalist = new ArrayList<>();
+
+        TarimDbClient client = new TarimDbClient(host, port);
+
+        TarimProto.ScanResponse response = client.scanRequest(tableID, handle, partitionID, planID,scanSize, lowerBound, upperBound, lowerBoundType, upperBoundType);
+        List<TarimProto.ScanRecord> scanRecords = response.getScanRecordsList();
+        AvroToRowDataConverters.AvroToRowDataConverter converter = createRowConverter(rowType);
+
+
+        org.apache.avro.Schema schema = new org.apache.avro.Schema.Parser().parse(schemaJson);
+        GenericDatumReader<GenericRecord> reader = new GenericDatumReader<>();
+        reader.setSchema(schema);
+
+        for (TarimProto.ScanRecord scanRecord : scanRecords){
+
+            ByteArrayInputStream bytesIS = new ByteArrayInputStream(scanRecord.getRecords().toByteArray());
+            BinaryDecoder decoder = new DecoderFactory().directBinaryDecoder(bytesIS, null);
+            GenericRecord datum = null;
+            try {
+                datum = reader.read(null, decoder);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            RowData data = (RowData)converter.convert(datum);
+            datalist.add(new DeltaData(scanRecord.getOp(), data));
+
+        }
+        return new DeltaRecords(datalist, response.getDataEnd());
+    }
+
+    public class DeltaRecords{
+        public List<DeltaData> datas;
+        public boolean endData;
+
+        DeltaRecords(List<DeltaData> datas, boolean endData){
+            //don't copy the data now, should spend much time
+            //this.datas = new ArrayList<>(datas);
+            this.datas = datas;
+            this.endData = endData;
+        }
+    }
+    //keep the code the receive delta data with batch records
+    /*
+    public List<DeltaData> getDeltaData(int tableID, RowType rowType, String partitionID, String schemaJson, long handle, String host, int port, String planID,
+                                        int scanSize, String lowerBound, String upperBound, int lowerBoundType, int upperBoundType) throws InterruptedException {
         //todo, get delta data from tarimDB
         logger.info("getDeltaData to tarimDB");
         List<DeltaData> datalist = new ArrayList<>();
 
         TarimDbClient client = new TarimDbClient(host, port);
 
-        TarimProto.ScanResponse response = client.scanRequest(tableID, handle, partitionID);
+        TarimProto.ScanResponse response = client.scanRequest(tableID, handle, partitionID, planID,scanSize, lowerBound, upperBound, lowerBoundType, upperBoundType);
+
         ByteArrayInputStream bytesIS = new ByteArrayInputStream(response.getRecords().toByteArray());
 
         AvroToRowDataConverters.AvroToRowDataConverter converter = createRowConverter(rowType);
@@ -112,7 +160,7 @@ public class TarimDbAdapt implements Serializable {
         }
 
         //simulate some data
-        /*
+
         if (partitionID.equals("d1")){
             datalist.add(new DeltaData(GenericRowData.of(fromString("d1222"), 2)));
 
@@ -132,7 +180,8 @@ public class TarimDbAdapt implements Serializable {
         }
 
         Thread.sleep(3000);
-         */
+
         return datalist;
     }
+    */
 }

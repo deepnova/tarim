@@ -87,12 +87,21 @@ public class TarimDBServer extends TarimGrpc.TarimImplBase {
                      StreamObserver<TarimProto.ScanResponse> responseObserver) 
     {
         int tableID = request.getTableID();
-        long scanHandle = request.getScanHandler();
+        long scanHandle = 0L;  //don't use now
         String partitionID = request.getPartitionID();
+        int scanSize = request.getScanSize();
+        String planID = request.getPlanID();
+        String lowerBound = request.getLowerBound();
+        String upperBound = request.getLowerBound();
+        int lowerBoundType = request.getLowerBoundType();
+        int upperBoundType = request.getUpperBoundType();
+        long snapshotID = request.getSnapshotID(); //don't use now
+
         TarimProto.ScanResponse response = null;
 
         try {
-            response = db.scanMsgProc(tableID, scanHandle, partitionID);
+            response = db.scanMsgProc(tableID, scanHandle, partitionID, planID, scanSize,
+                    lowerBound, upperBound, lowerBoundType, upperBoundType, snapshotID);
         } catch (TarimKVException e) {
             throw new RuntimeException(e);
         }

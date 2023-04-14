@@ -107,6 +107,11 @@ public class KVSchema {
         public long chunkID;
         public String lastKey; //TODO: for full in future
         public int scanSize;
+        public String planID;
+        public String lowerBound;
+        public String upperBound;
+        public int lowerBoundType;
+        public int upperBoundType;
     }
 
     public static class PrefixScanParam {

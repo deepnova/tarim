@@ -1,6 +1,8 @@
 package org.deepexi.source;
 
+import org.apache.commons.collections.list.TransformedList;
 import org.apache.flink.table.catalog.ObjectPath;
+import org.apache.flink.table.planner.expressions.In;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.*;
@@ -26,8 +28,6 @@ public class TarimFlinkSplitPlanner {
     //iceberg table to read parquet data
     //tarim table to load delta data
     static TarimFlinkInputSplit[] planInputSplits(Table tarimTable, Table icebergTable, TarimScanContext context) {
-
-
         RowType rowType = FlinkSchemaUtil.convert(tarimTable.schema());
 
         if(context.datafileFromIceberg()){
@@ -68,6 +68,7 @@ public class TarimFlinkSplitPlanner {
 
                 //test = task.file().partition().get(0, String.class);
 
+
                 for (int i =0; i < partitionList.size(); i++) {
                     String partitionID = partitionList.get(i);
 
@@ -75,17 +76,6 @@ public class TarimFlinkSplitPlanner {
                         if (!map.containsKey(partitionID)){
 
                             map.put(partitionID, index);
-
-                            scans.add(new TarimCombinedScanTask(
-                                    ((ConnectorTarimTable) tarimTable).getTableId(),
-                                    rowType,
-                                    ((ConnectorTarimTable) tarimTable).getSchemaJson(),
-                                    partitionID,
-                                    partitionsList.get(i).getScanHandler(),
-                                    partitionsList.get(i).getHost(),
-                                    partitionsList.get(i).getPort(),
-                                    new ArrayList<>()));
-                            index++;
                         }
                         scans.get(map.get(partitionID)).addTask(task);
                         //scans.get(map.get(trunkId)).setTrunk(trunkId);
@@ -101,7 +91,110 @@ public class TarimFlinkSplitPlanner {
             return splits;
         }else{
             //todo get the file From tarimDB
-            return new TarimFlinkInputSplit[0];
+            List<ScanPartition> partitionsList = ((ConnectorTarimTable) tarimTable).getScanList();
+            List<TarimCombinedScanTask> scans = new ArrayList<>();
+            List<TarimFileScanTask> fileScanList = new ArrayList<>();
+
+            //todo ? the parameters of the Metrics
+            for (ScanPartition partition : partitionsList){
+                int id = 0;
+                long planTotalSize = 0;
+                int fileNumber = partition.getFileInfoList().size();
+                int partitionUpperType = 0;
+                int partitionLowerType = 0;
+                String upperBound = "";
+                String lowerBound = "";
+
+                for (int index = 0; index < fileNumber; index++){
+                    id = 0;
+                    ScanPartition.FileInfo fileInfo = partition.getFileInfoList().get(index);
+
+                    if (planTotalSize > 512 * 1000 * 1000){
+                        scans.add(new TarimCombinedScanTask(
+                                ((ConnectorTarimTable) tarimTable).getTableId(),
+                                rowType,
+                                ((ConnectorTarimTable) tarimTable).getSchemaJson(),
+                                partition.getPartitionID(),
+                                0,
+                                partition.getHost(),
+                                partition.getPort(),
+                                new ArrayList<>(fileScanList),
+                                id,
+                                lowerBound,
+                                upperBound,
+                                partitionLowerType,
+                                partitionUpperType));
+                        fileScanList.clear();
+                        planTotalSize = 0;
+                        id++;
+                    }
+
+                    DataFile datafile = DataFiles.builder(tarimTable.spec())
+                            .withFormat(fileInfo.format)
+                            .withPath(fileInfo.path)
+                            .withPartition(null)
+                            .withFileSizeInBytes(fileInfo.sizeInBytes)
+                            .withMetrics(new Metrics(fileInfo.rowCounts, new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>()))
+                            .withSplitOffsets(fileInfo.offsets)
+                            .withSortOrder(null)
+                            .build();
+
+                    TarimFileScanTask fileScanTask = new TarimFileScanTask(datafile, tarimTable.spec(), null, null);
+                    fileScanList.add(fileScanTask);
+
+                    if (id == 0) {
+                        //the first plan
+                        if (partition.getPartitionLowerBound().equals("")) {
+                            partitionLowerType = 0;
+                        } else {
+                            partitionLowerType = 1;
+                        }
+                    }
+
+                    if (planTotalSize == 0){
+                        //the first range in each plan
+                        //index for the primary
+                        lowerBound = fileInfo.lowerBounds.get(0);
+                    }
+                    upperBound = fileInfo.upperBounds.get(0);
+                    partitionUpperType= 2;
+
+                    planTotalSize += fileInfo.sizeInBytes;
+
+                    if (index == (fileNumber - 1)){
+                        //the first plan
+                        if (partition.getPartitionUpperBound().equals("")){
+                            partitionUpperType = 0;
+                        }else{
+                            partitionUpperType = 1;
+                        }
+
+                        scans.add(new TarimCombinedScanTask(
+                                ((ConnectorTarimTable) tarimTable).getTableId(),
+                                rowType,
+                                ((ConnectorTarimTable) tarimTable).getSchemaJson(),
+                                partition.getPartitionID(),
+                                0,
+                                partition.getHost(),
+                                partition.getPort(),
+                                new ArrayList<>(fileScanList),
+                                id,
+                                lowerBound,
+                                upperBound,
+                                partitionLowerType,
+                                partitionUpperType));
+
+                        fileScanList.clear();
+                        planTotalSize = 0;
+                    }
+                }
+            }
+
+            TarimFlinkInputSplit[] splits = new TarimFlinkInputSplit[scans.size()];
+            for (int i = 0; i < scans.size(); i++) {
+                splits[i] = new TarimFlinkInputSplit(i, scans.get(i));
+            }
+            return splits;
         }
     }
     static CloseableIterable<CombinedScanTask> planTasks(Table table, TarimScanContext context) {

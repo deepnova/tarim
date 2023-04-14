@@ -93,17 +93,26 @@ message GetRequest {
     repeated string keys = 3;
 }
 
+message RangeData{
+    repeated KeyValueOp values = 1;
+    bool dataEnd = 2;
+}
 message GetResponse {
     StatusResponse status = 1;
-    repeated KeyValueOp values = 2;
+    RangeData records = 2;
 }
 
 message PrefixSeekRequest {
     int32 tableID = 1;
     int64 chunkID = 2;
     string prefix = 3;
-    //int32 scanSize = 4; // 0: unlimited
-    //int32 snapshotID; // unspported, Temp: get all one-time
+    int32 scanSize = 4; // 0: unlimited
+    int64 snapshotID = 5;
+    string planID = 6;   //flinkJob+tableID+PartitionID+planID for identifier
+    string lower_bound = 7;
+    string upper_bound = 8;
+    int32 lower_bound_type = 9; //0 for NEGATIVE_INFINITY, 1 for exclusive, 2 for inclusive
+    int32 upper_bound_type = 10; //0 for POSITIVE_INFINITY, 1 for exclusive, 2 for inclusive
     //string lastKey;   // unspported, Temp: get all one-time
 }
 

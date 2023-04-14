@@ -49,7 +49,7 @@ public class TarimScanContext implements Serializable {
     private static final ConfigOption<Boolean> INCLUDE_COLUMN_STATS =
             ConfigOptions.key("include-column-stats").booleanType().defaultValue(false);
     private static final ConfigOption<Boolean> DATAFILE_FROM_ICEBERG =
-            ConfigOptions.key("datafile-from-iceberg").booleanType().defaultValue(true);
+            ConfigOptions.key("datafile-from-iceberg").booleanType().defaultValue(false);
     private final boolean caseSensitive;
     private final Long snapshotId;
     private final Long startSnapshotId;
@@ -328,7 +328,7 @@ public class TarimScanContext implements Serializable {
             return this;
         }
 
-        Builder datafileFromIceberg(boolean datafileFromIceberg) {
+        Builder  datafileFromIceberg(boolean datafileFromIceberg) {
             this.datafileFromIceberg = datafileFromIceberg;
             return this;
         }

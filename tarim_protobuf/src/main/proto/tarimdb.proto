@@ -65,15 +65,28 @@ message LookupResponse {
     bytes record = 3;
 }
 
+message FileInfo{
+    string path = 1;
+    string format = 2;
+    int32 sizeInBytes = 3;
+    map<int32, string> lowerBounds = 4;
+    map<int32, string> upperBounds = 5;
+    repeated int64 offsets = 6;
+    int64 rowCount = 7;
+}
+
 message Partition {
     string partitionID = 1;
     int64 scanHandler = 2;
     // only implement 'client_merge' policy first
     int32 mergePolicy = 3; // 0：none_merge, 1：client_merge, 2：server_merge
-    repeated string mainPaths = 4;
+    repeated FileInfo fileInfo = 4;
     string host = 5;
     int32 port = 6;
+    string partitionLowerBound = 7;
+    string partitionUpperBound = 8;
 }
+
 message MainAccount {
     int32 accountType = 1; // 1：S3, 2：HDFS
     string username = 2;
@@ -102,18 +115,33 @@ message PrepareScanResponse {
     ScanInfo scanInfo = 3;
 }
 
+
 message ScanRequest {
     int32 tableID = 1;
     string partitionID = 2;
     int64 scanHandler = 3;
+    int32 scanSize = 4;
+    int64 snapshotID = 5;
+    string planID = 6;   //flinkJob+tableID+PartitionID+planID for identifier
+    string lower_bound = 7;
+    string upper_bound = 8;
+    int32 lower_bound_type = 9; //0 for NEGATIVE_INFINITY, 1 for exclusive'(', 2 for inclusive'['
+    int32 upper_bound_type = 10; //0 for POSITIVE_INFINITY, 1 for exclusive')', 2 for inclusive']'
     //TODO: more
+}
+
+message ScanRecord{
+    int32 op = 1; //1 for insert, 2 for delete
+    bytes records = 2;
 }
 
 message ScanResponse {
     int32 code = 1;
     string msg = 2;
-    bytes records = 3; // new and updated records, serialized in avro
-    bytes deleteRecords = 4; // delete records, serialized in avro
+    //bytes records = 3; // new and updated records, serialized in avro
+    //bytes deleteRecords = 4; // delete records, serialized in avro
+    repeated ScanRecord scanRecords = 3;
+    bool dataEnd = 4;
 }
 
 message PartitionRequest{

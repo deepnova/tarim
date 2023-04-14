@@ -36,11 +36,18 @@ public class TarimDbClient {
         return response.getCode();
     }
 
-    public TarimProto.ScanResponse scanRequest(int tableID, long handle, String partitionID){
+    public TarimProto.ScanResponse scanRequest(int tableID, long handle, String partitionID, String planID,
+                                               int scanSize, String lowerBound, String upperBound, int lowerBoundType, int upperBoundType){
         TarimProto.ScanRequest request = TarimProto.ScanRequest.newBuilder()
                 .setTableID(tableID)
                 .setPartitionID(partitionID)
                 .setScanHandler(handle)
+                .setPlanID(planID)
+                .setScanSize(scanSize)
+                .setLowerBound(lowerBound)
+                .setUpperBound(upperBound)
+                .setLowerBoundType(lowerBoundType)
+                .setUpperBoundType(upperBoundType)
                 .build();
 
         TarimProto.ScanResponse response = blockingStub.scan(request);

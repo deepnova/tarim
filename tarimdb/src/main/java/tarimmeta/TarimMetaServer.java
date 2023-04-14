@@ -123,7 +123,7 @@ public class TarimMetaServer {
 
     TarimProto.PrepareScanResponse partitionTableScan(int tableID, boolean allFlag,  byte[] conditions, List<String> partitionIDs){
         List<TarimProto.Partition> partitionAll = new ArrayList<>();
-
+        List<TarimProto.FileInfo> fileInfoList = new ArrayList<>();
         TarimProto.ScanInfo.Builder scanBuilder = TarimProto.ScanInfo.newBuilder();
         TarimProto.MainAccount.Builder accountBuilder = TarimProto.MainAccount.newBuilder();
         accountBuilder.setAccountType(2);
@@ -171,17 +171,23 @@ public class TarimMetaServer {
                     throw new RuntimeException("the node is null!");
                 }else{
                     TarimProto.Partition.Builder builder = TarimProto.Partition.newBuilder();
+
+                    TarimProto.FileInfo.Builder fileBuilder = TarimProto.FileInfo.newBuilder();
+                    //todo get the file info from the meta
+                    fileBuilder.setFormat("parquet");
+                    fileInfoList.add(0, fileBuilder.build());
+
                     builder.setPartitionID(keyValue.getValue());
-                    builder.addAllMainPaths(filePath);
                     builder.setMergePolicy(1);
                     builder.setHost(node.host);
                     builder.setPort(node.port);
+                    builder.addAllFileInfo(fileInfoList);
 
                     partitionAll.add(builder.build());
                 }
             }
         }
-        
+
         scanBuilder.addAllPartitions(partitionAll);
         responseBuilder.setScanInfo(scanBuilder.build());
         return responseBuilder.build();

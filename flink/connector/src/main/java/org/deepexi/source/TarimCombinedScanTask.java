@@ -20,7 +20,16 @@ public class TarimCombinedScanTask implements CombinedScanTask {
     private String schemaJson;
     private int tableID;
 
-    public TarimCombinedScanTask(int tableID, RowType rowType, String schemaJson, String partitionID, long scanHandle, String host, int port, List<FileScanTask>  tasks) {
+    private int scanSize;
+    private String planID;
+    private String lowerBound;
+    private String upperBound;
+    int lowerBoundType;
+    int upperBoundType;
+
+    public TarimCombinedScanTask(int tableID, RowType rowType, String schemaJson, String partitionID,
+                                 long scanHandle, String host, int port, List<FileScanTask>  tasks,
+                                 int id, String lowerBound, String upperBound, int lowerBoundType, int upperBoundType) {
         Preconditions.checkNotNull(tasks, "tasks cannot be null");
         this.tableID = tableID;
         this.partitionID = partitionID;
@@ -32,6 +41,11 @@ public class TarimCombinedScanTask implements CombinedScanTask {
         this.rowType = rowType;
         this.schemaJson = schemaJson;
 
+        this.planID =  String.format("%d_%s_%d" ,tableID, partitionID, id);
+        this.lowerBound = lowerBound;
+        this.upperBound = upperBound;
+        this.lowerBoundType = lowerBoundType;
+        this.upperBoundType = upperBoundType;
     }
     @Override
     public Collection<FileScanTask> files() {
@@ -78,4 +92,13 @@ public class TarimCombinedScanTask implements CombinedScanTask {
     public int getTableID(){
         return this.tableID;
     }
+
+    public String getPlanID(){ return this.planID;}
+    public String getLowerBound(){return this.lowerBound;}
+    public String getUpperBound(){return this.upperBound;}
+
+    public int getScanSize(){return this.scanSize;}
+    public int getLowerBoundType(){return this.lowerBoundType;}
+    public int getUpperBoundType(){return this.upperBoundType;}
+
 }

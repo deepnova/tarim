@@ -25,6 +25,7 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -198,16 +199,21 @@ public class TarimSource {
 
                 TarimProto.ScanInfo res = result.getScanInfo();
                 List<TarimProto.Partition> patitionList = res.getPartitionsList();
-
+                List<ScanPartition.FileInfo> scanFileInfoList = new ArrayList<>();
                 List<ScanPartition> scanList = new ArrayList<>();
                 for(TarimProto.Partition partition : patitionList){
-                    List<String> list = new ArrayList<>();
-                    for (String path : partition.getMainPathsList()){
-                        list.add(path);
+
+                    List<TarimProto.FileInfo> fileInfoList = partition.getFileInfoList();
+
+                    for (TarimProto.FileInfo fileInfo :fileInfoList){
+                        scanFileInfoList.add(new ScanPartition.FileInfo(fileInfo.getPath(), fileInfo.getFormat(), fileInfo.getSizeInBytes(),
+                                new HashMap<>(fileInfo.getLowerBoundsMap()) , new HashMap<>(fileInfo.getUpperBoundsMap()),
+                                new ArrayList<>(fileInfo.getOffsetsList()), fileInfo.getRowCount()));
                     }
+
                     scanList.add(new ScanPartition(partition.getPartitionID(), partition.getScanHandler(),
-                            partition.getMergePolicy(), list,
-                            partition.getHost(), partition.getPort()));
+                            partition.getMergePolicy(), scanFileInfoList,
+                            partition.getHost(), partition.getPort(), "", ""));
                 }
 
                 ((ConnectorTarimTable)tarimTable).setScanList(scanList);

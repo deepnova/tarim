@@ -141,7 +141,7 @@ public class TarimDB extends AbstractDataModel {
             partitionBuilder.setPartitionID(partitionIDs.get(i));
             partitionBuilder.setScanHandler(result.chunkDetails.get(i).scanHandler);
             partitionBuilder.setMergePolicy(result.chunkDetails.get(i).mergePolicy);
-            partitionBuilder.addAllMainPaths(result.chunkDetails.get(i).mainPaths);
+            //partitionBuilder.addAllMainPaths(result.chunkDetails.get(i).mainPaths);
             partitionBuilder.setPort(client.getKVLocalMetadata().port);
             partitionBuilder.setHost(client.getKVLocalMetadata().address);
             partitions.add(partitionBuilder.build());
@@ -152,14 +152,23 @@ public class TarimDB extends AbstractDataModel {
         return respBuilder.build();
     }
 
-    public TarimProto.ScanResponse scanMsgProc(int tableID, long scanHandle, String partitionID) throws TarimKVException {
+    //keep the code
+    public TarimProto.ScanResponse scanMsgProc(int tableID, long scanHandle, String partitionID, String planID, int scanSize,
+                                               String lowerBound, String upperBound, int lowerBoundType, int upperBoundType, long snapshotID) throws TarimKVException {
         KVSchema.DeltaScanParam DeltaScanParam = new KVSchema.DeltaScanParam();
+
         DeltaScanParam.tableID = tableID;
         DeltaScanParam.scanHandler = scanHandle;
         DeltaScanParam.chunkID = toChunkID(partitionID);
+        DeltaScanParam.scanSize = scanSize;
+        DeltaScanParam.planID = planID;
+        DeltaScanParam.lowerBound = lowerBound;
+        DeltaScanParam.upperBound = upperBound;
+        DeltaScanParam.lowerBoundType = lowerBoundType;
+        DeltaScanParam.upperBoundType = upperBoundType;
 
         TarimKVClient client = getTarimKVClient();
-        List<TarimKVProto.KeyValueOp> result = client.deltaChunkScan(DeltaScanParam, true);
+        TarimKVProto.RangeData result = client.deltaChunkScan(DeltaScanParam, true);
         //the op all are 1 now
 
         //todo schemaJson should be create from the metaNode
@@ -167,13 +176,20 @@ public class TarimDB extends AbstractDataModel {
         org.apache.avro.Schema schema = new org.apache.avro.Schema.Parser().parse(schemaJson);
 
         TarimProto.ScanResponse.Builder respBuilder = TarimProto.ScanResponse.newBuilder();
+        List<TarimProto.ScanRecord> scanRecords = new ArrayList<>();
         ByteArrayOutputStream bytesOS = new ByteArrayOutputStream();
         BinaryEncoder encoder = new EncoderFactory().directBinaryEncoder(bytesOS, null); // or binaryEncoder() to create BufferedBinaryEncoder
         DatumWriter writer = new GenericDatumWriter(schema);
 
-        for(TarimKVProto.KeyValueOp record : result) {
+        for(TarimKVProto.KeyValueOp record : result.getValuesList()) {
             try {
                 writer.write(record.getValue(), encoder);
+                TarimProto.ScanRecord.Builder recordBuilder = TarimProto.ScanRecord.newBuilder();
+                recordBuilder.setOp(record.getOp());
+                recordBuilder.setRecords(ByteString.copyFrom(bytesOS.toByteArray()));
+                scanRecords.add(recordBuilder.build());
+
+                bytesOS.reset();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -182,7 +198,8 @@ public class TarimDB extends AbstractDataModel {
         //test all insert first
         respBuilder.setCode(0);
         respBuilder.setMsg("OK");
-        respBuilder.setRecords(ByteString.copyFrom(bytesOS.toByteArray()));
+        respBuilder.addAllScanRecords(scanRecords);
+        respBuilder.setDataEnd(result.getDataEnd());
 
         return respBuilder.build();
     }

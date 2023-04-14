@@ -5,9 +5,12 @@ import org.apache.flink.table.data.RowData;
 public class DeltaData {
     private boolean matchFlag = false;
 
+    private int op;
+
     private final RowData data;
 
-    public DeltaData(RowData data){
+    public DeltaData(int op, RowData data){
+        this.op = op;
         this.data = data;
     }
 
@@ -21,5 +24,12 @@ public class DeltaData {
 
     public boolean getMatchFlag(){
         return this.matchFlag;
+    }
+
+    public void setOp(int op){
+        this.op = op;
+    }
+    public int getOp(){
+        return this.op;
     }
 }
