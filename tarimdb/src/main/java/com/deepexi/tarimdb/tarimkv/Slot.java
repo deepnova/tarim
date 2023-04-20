@@ -257,10 +257,16 @@ public class Slot
     }
 
     boolean getIteratorFilter(int upperBoundType, String upperBound, byte[] iteratorKey, String starKey){
-        if (upperBoundType == 0){
-            return iteratorKey.toString().compareTo(upperBound) <= 0;
-        }else{
-            return Common.startWith(iteratorKey, starKey.getBytes());
+
+        switch (upperBoundType) {
+            case 0:
+                return Common.startWith(iteratorKey, starKey.getBytes());
+            case 1:
+                return (new String(iteratorKey)).compareTo(upperBound) < 0;
+            case 2:
+                return (new String(iteratorKey)).compareTo(upperBound) <= 0;
+            default:
+                throw new RuntimeException("un support type!");
         }
     }
 
@@ -292,12 +298,16 @@ public class Slot
             if (lowerBoundType == 0){
                 //NEGATIVE_INFINITY
                 for (it.seekToFirst();
-                     it.isValid() && getIteratorFilter(upperBoundType, upperBound, it.key(), startKey) && totalSize <= scanSize;
+                     it.isValid()  && totalSize <= scanSize;
                      it.next(), totalSize++){
                     it.status();
                     if(it.key() == null || it.value() == null)
                     {
                         throw new RocksDBException("deltaScan the key is null!");
+                    }
+
+                    if (!getIteratorFilter(upperBoundType, upperBound, it.key(), startKey)){
+                        continue;
                     }
 
                     kvc = KeyValueCodec.OpKeyDecode(new String(it.key()), it.value());
@@ -341,7 +351,7 @@ public class Slot
                 }
             }
 
-            if (!Common.startWith(it.key(), startKey.getBytes())){
+            if (!it.isValid() || !getIteratorFilter(upperBoundType, upperBound, it.key(), startKey)){
                 endFlag = true;
                 mapToIter.remove(planID);
                 it.close();
@@ -373,7 +383,7 @@ public class Slot
                         + ", start key: " + startKey);
                 results.add(kvc.valueOp);
             }
-            if (!Common.startWith(iter.key(), startKey.getBytes())){
+            if (!iter.isValid() || !getIteratorFilter(upperBoundType, upperBound, iter.key(), startKey)){
                 endFlag = true;
                 mapToIter.remove(planID);
                 iter.close();

@@ -46,6 +46,9 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
     private DeltaData deltaMinRowData;
     private RowData mainMinRowData;
 
+    boolean mainDataEnd;
+    boolean deltaDataEnd;
+
 
     TarimFlinkInputFormat(TarimDbAdapt tarimDbAdapt, Table tarimTable, Table icebergTable, Schema tableSchema, FileIO io, EncryptionManager encryption,
                           TarimScanContext context) {
@@ -97,24 +100,18 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
         //the column id in iceberg is larger 1 than the column id in flink
         //this one primary key
         primaryIdInFlink = identifierIdsList.get(0) - 1;
+        mergeState = MergeState.valueOf(0);
 
     }
     @Override
     public boolean reachedEnd() {
-        boolean mainDataEnd = iterator.hasNext();
-        boolean deltaDataEnd = deltaDataIterator.hasNext();
-
-        if (mainDataEnd){
-            setState(STATE_LEFT_END);
-        }
-        if (deltaDataEnd){
-            setState(STATE_RIGHT_END);
-        }
+        mainDataEnd = !iterator.hasNext();
+        deltaDataEnd = !deltaDataIterator.hasNext();
 
         if (context.limit() > 0 && currentReadCount >= context.limit()) {
             return true;
         } else {
-            return !mainDataEnd && !deltaDataEnd;
+            return mainDataEnd && deltaDataEnd;
         }
     }
 
@@ -125,16 +122,19 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
             return getNextRecordInStateRightEnd(iterator);
         }
 
-        mainMinRowData = iterator.next();
+        //have to copy the mainRowData, because the parquet iterator will do getNext in hasNext function
+        GenericRowData currentRowData = (GenericRowData)iterator.next();
+        RowData rowData = copyMainRowData(currentRowData);
+
         deltaMinRowData = deltaDataIterator.next();
-        mainPkMin = ((GenericRowData) mainMinRowData).getField(primaryIdInFlink).toString();
+        mainPkMin = ((GenericRowData) rowData).getField(primaryIdInFlink).toString();
         deltaPkMin = ((GenericRowData) (deltaMinRowData.getData())).getField(primaryIdInFlink).toString();
 
         int compare = mainPkMin.compareTo(deltaPkMin);
 
         if(compare < 0){
             setState(STATE_LEFT);
-            return mainMinRowData;
+            return rowData;
         }else if(compare > 0){
             setState(STATE_RIGHT);
             if (deltaMinRowData.getOp() == 2){
@@ -155,15 +155,29 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
 
     RowData getNextRecordInStateEqual(DataIterator<RowData> iterator, DeltaDataIterator deltaDataIterator){
 
-        mainMinRowData = iterator.next();
+        if (mainDataEnd){
+            setState(STATE_LEFT_END);
+            //return deltaMinRowData.getData();
+            return getNextRecordInStateLeftEnd(deltaDataIterator);
+        }
+        if (deltaDataEnd){
+            setState(STATE_RIGHT_END);
+            //return mainMinRowData;
+            return getNextRecordInStateRightEnd(iterator);
+        }
+
+        //have to copy the mainRowData, because the parquet iterator will do getNext in hasNext function
+        GenericRowData currentRowData = (GenericRowData)iterator.next();
+        RowData rowData = copyMainRowData(currentRowData);
+
         deltaMinRowData = deltaDataIterator.next();
-        mainPkMin = ((GenericRowData) mainMinRowData).getField(primaryIdInFlink).toString();
+        mainPkMin = ((GenericRowData) rowData).getField(primaryIdInFlink).toString();
         deltaPkMin = ((GenericRowData) (deltaMinRowData.getData())).getField(primaryIdInFlink).toString();
 
         int compare = mainPkMin.compareTo(deltaPkMin);
         if(compare < 0){
             setState(STATE_LEFT);
-            return mainMinRowData;
+            return rowData;
         }else if(compare > 0){
             setState(STATE_RIGHT);
             return deltaMinRowData.getData();
@@ -177,15 +191,20 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
     }
 
     RowData getNextRecordInStateLeft(DataIterator<RowData> iterator){
-        RowData mainElement = iterator.next();
-        mainPkMin = ((GenericRowData) mainElement).getField(primaryIdInFlink).toString();
+        if (mainDataEnd){
+            setState(STATE_LEFT_END);
+            return deltaMinRowData.getData();
+        }
+
+        GenericRowData mainElement = (GenericRowData)iterator.next();
+        mainPkMin = mainElement.getField(primaryIdInFlink).toString();
 
         int compareCurrent = mainPkMin.compareTo(deltaPkMin);
         if (compareCurrent < 0){
             return mainElement;
         }else if (compareCurrent > 0){
             setState(STATE_RIGHT);
-            mainMinRowData = mainElement;
+            copyMainRowData(mainElement);
             if (deltaMinRowData.getOp() == 2){
                 //delete data merge
                 //is there this case? the data deleted in delta but not in main
@@ -203,6 +222,12 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
     }
 
     RowData getNextRecordInStateRight(DeltaDataIterator deltaDataIterator){
+
+        if (deltaDataEnd){
+            setState(STATE_RIGHT_END);
+            return mainMinRowData;
+        }
+
         DeltaData deltaElement = deltaDataIterator.next();
 
         deltaPkMin = ((GenericRowData) deltaElement.getData()).getField(primaryIdInFlink).toString();
@@ -235,7 +260,7 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
 
     RowData getNextRecordInStateLeftEnd(DeltaDataIterator deltaDataIterator){
         DeltaData deltaData = deltaDataIterator.next();
-        if (deltaMinRowData.getOp() == 2){
+        if (deltaData.getOp() == 2){
             //delete data merge
             //is there this case? the data deleted in delta but not in main
             getNextRecordInStateLeftEnd(deltaDataIterator);
@@ -243,15 +268,25 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
         return deltaData.getData();
     }
 
+    private RowData copyMainRowData(GenericRowData orgRowData){
+
+        int len = orgRowData.getArity();
+        Object values[] = new Object[len];
+        for (int i=0; i< len;i++){
+            values[i] = orgRowData.getField(i);
+        }
+        mainMinRowData = GenericRowData.of(values);
+        return mainMinRowData;
+    }
     @Override
     public RowData nextRecord(RowData reuse) {
 
         RowData rowData;
-        if (currentReadCount == 0){
+        currentReadCount++;
+
+        if (currentReadCount == 1){
             return getFirstRecord(iterator, deltaDataIterator);
         }
-
-        currentReadCount++;
 
         switch (mergeState) {
             case STATE_EQUAL:
@@ -290,10 +325,32 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
         return mergeState.equals(state);
     }
     enum MergeState {
-        STATE_EQUAL,
-        STATE_LEFT,
-        STATE_RIGHT,
-        STATE_LEFT_END,
-        STATE_RIGHT_END
+        STATE_EQUAL(0),
+        STATE_LEFT(1),
+        STATE_RIGHT(2),
+        STATE_LEFT_END(3),
+        STATE_RIGHT_END(4);
+
+        private int value;
+        MergeState(int value){
+            this.value = value;
+        }
+
+        public static MergeState valueOf(int value){
+            switch(value){
+                case 0:
+                    return MergeState.STATE_EQUAL;
+                case 1:
+                    return MergeState.STATE_LEFT;
+                case 2:
+                    return MergeState.STATE_RIGHT;
+                case 3:
+                    return MergeState.STATE_LEFT_END;
+                case 4:
+                    return MergeState.STATE_RIGHT_END;
+                default:
+                    return null;
+            }
+        }
     }
 }

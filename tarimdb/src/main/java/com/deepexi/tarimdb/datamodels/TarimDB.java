@@ -5,6 +5,7 @@ import com.deepexi.rpc.TarimProto;
 import com.deepexi.tarimdb.util.Common;
 import com.deepexi.tarimdb.util.TarimKVException;
 import com.google.protobuf.ByteString;
+import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericDatumWriter;
@@ -83,6 +84,7 @@ public class TarimDB extends AbstractDataModel {
                 writer.write(datum, encoder);
 
                 readSize++;
+                Schema test = datum.getSchema();
                 kvBuiler.setKey(datum.get(primaryKey).toString());
                 kvBuiler.setValue(ByteString.copyFrom(bytesOS.toByteArray()));
                 requestBuilder.addValues(index, kvBuiler.build());
@@ -166,6 +168,7 @@ public class TarimDB extends AbstractDataModel {
         DeltaScanParam.upperBound = upperBound;
         DeltaScanParam.lowerBoundType = lowerBoundType;
         DeltaScanParam.upperBoundType = upperBoundType;
+        DeltaScanParam.scope = 2;
 
         TarimKVClient client = getTarimKVClient();
         TarimKVProto.RangeData result = client.deltaChunkScan(DeltaScanParam, true);
@@ -177,22 +180,22 @@ public class TarimDB extends AbstractDataModel {
 
         TarimProto.ScanResponse.Builder respBuilder = TarimProto.ScanResponse.newBuilder();
         List<TarimProto.ScanRecord> scanRecords = new ArrayList<>();
-        ByteArrayOutputStream bytesOS = new ByteArrayOutputStream();
-        BinaryEncoder encoder = new EncoderFactory().directBinaryEncoder(bytesOS, null); // or binaryEncoder() to create BufferedBinaryEncoder
-        DatumWriter writer = new GenericDatumWriter(schema);
+        //ByteArrayOutputStream bytesOS = new ByteArrayOutputStream();
+        //BinaryEncoder encoder = new EncoderFactory().directBinaryEncoder(bytesOS, null); // or binaryEncoder() to create BufferedBinaryEncoder
+        //DatumWriter writer = new GenericDatumWriter(schema);
 
         for(TarimKVProto.KeyValueOp record : result.getValuesList()) {
-            try {
-                writer.write(record.getValue(), encoder);
-                TarimProto.ScanRecord.Builder recordBuilder = TarimProto.ScanRecord.newBuilder();
-                recordBuilder.setOp(record.getOp());
-                recordBuilder.setRecords(ByteString.copyFrom(bytesOS.toByteArray()));
-                scanRecords.add(recordBuilder.build());
+            //ByteString test = record.getValue();
+            //GenericRecord recordData = (GenericRecord)record.getValue();
 
-                bytesOS.reset();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            //writer.write(recordData, encoder);
+            TarimProto.ScanRecord.Builder recordBuilder = TarimProto.ScanRecord.newBuilder();
+            recordBuilder.setOp(record.getOp());
+            //recordBuilder.setRecords(ByteString.copyFrom(bytesOS.toByteArray()));
+            recordBuilder.setRecords(record.getValue());
+            scanRecords.add(recordBuilder.build());
+
+            //bytesOS.reset();
         }
 
         //test all insert first

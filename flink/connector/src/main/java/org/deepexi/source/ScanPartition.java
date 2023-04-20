@@ -61,12 +61,12 @@ public class ScanPartition implements Serializable {
         public String format;
         public long sizeInBytes;
 
-        public Map<Integer, String> lowerBounds;
-        public Map<Integer, String> upperBounds;
+        public Map<Integer, byte[]> lowerBounds;
+        public Map<Integer, byte[]> upperBounds;
         public List<Long> offsets;
         public long rowCounts;
 
-        public FileInfo(String path, String format, long sizeInBytes, Map<Integer, String> lowerBounds, Map<Integer, String> upperBounds,
+        public FileInfo(String path, String format, long sizeInBytes, Map<Integer, byte[]> lowerBounds, Map<Integer, byte[]> upperBounds,
                         List<Long> offsets, long rowCounts){
             this.path = path;
             this.format = format;

@@ -7,6 +7,7 @@ import com.deepexi.rpc.TarimKVProto;
 import com.deepexi.rpc.TarimProto;
 import com.deepexi.tarimdb.tarimkv.KeyValueCodec;
 import com.deepexi.tarimdb.util.Common;
+import com.google.protobuf.ByteString;
 import org.apache.commons.codec.digest.MurmurHash3;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.avro.AvroSchemaUtil;
@@ -15,6 +16,8 @@ import org.apache.iceberg.expressions.Expression;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -172,12 +175,14 @@ public class TarimMetaServer {
                 }else{
                     TarimProto.Partition.Builder builder = TarimProto.Partition.newBuilder();
 
-                    TarimProto.FileInfo.Builder fileBuilder = TarimProto.FileInfo.newBuilder();
+                    //TarimProto.FileInfo.Builder fileBuilder = TarimProto.FileInfo.newBuilder();
                     //todo get the file info from the meta
-                    fileBuilder.setFormat("parquet");
-                    fileInfoList.add(0, fileBuilder.build());
+                    //fileBuilder.setFormat("parquet");
+                    //fileInfoList.add(0, fileBuilder.build());
 
-                    builder.setPartitionID(keyValue.getValue());
+                    fileSimulate(fileInfoList);
+
+                    builder.setPartitionID(keyValue.getKey());
                     builder.setMergePolicy(1);
                     builder.setHost(node.host);
                     builder.setPort(node.port);
@@ -193,6 +198,54 @@ public class TarimMetaServer {
         return responseBuilder.build();
     }
 
+    private void fileSimulate(List<TarimProto.FileInfo> fileInfoList){
+        TarimProto.FileInfo.Builder fileBuilder1 = TarimProto.FileInfo.newBuilder();
+
+        fileBuilder1.setFormat("PARQUET")
+                .setRowCount(2)
+                .setSizeInBytes(991)
+                .setPath("hdfs://10.201.0.82:9000/wpf0220/default_db/new_table12/data/class=class7/00000-0-f7af0401-7dfb-4e21-b758-d7be09f1c790-00003.parquet")
+                .putAllLowerBounds(Map.of(1,ByteString.copyFrom(new byte[]{1, 0, 0, 0}),
+                        2, ByteString.copyFrom(new byte[]{10, 0, 0, 0}),
+                        3, ByteString.copyFrom("class7".getBytes())))
+                .putAllUpperBounds(Map.of(1,ByteString.copyFrom(new byte[]{5, 0, 0, 0}),
+                        2, ByteString.copyFrom(new byte[]{50, 0, 0, 0}),
+                        3, ByteString.copyFrom("class7".getBytes())));
+
+        fileInfoList.add(fileBuilder1.build());
+
+        TarimProto.FileInfo.Builder fileBuilder2 = TarimProto.FileInfo.newBuilder();
+
+        fileBuilder2.setFormat("PARQUET")
+                .setRowCount(1)
+                .setSizeInBytes(932)
+                .setPath("hdfs://10.201.0.82:9000/wpf0220/default_db/new_table12/data/class=class7/00000-0-f82200ee-38dd-4ec9-9b61-cb61c6438fdc-00003.parquet")
+                .putAllLowerBounds(Map.of(1,ByteString.copyFrom(new byte[]{7, 0, 0, 0}),
+                        2, ByteString.copyFrom(new byte[]{70, 0, 0, 0}),
+                        3, ByteString.copyFrom("class7".getBytes())))
+                .putAllUpperBounds(Map.of(1,ByteString.copyFrom(new byte[]{7, 0, 0, 0}),
+                        2, ByteString.copyFrom(new byte[]{70, 0, 0, 0}),
+                        3, ByteString.copyFrom("class7".getBytes())));
+
+        fileInfoList.add(fileBuilder2.build());
+
+        TarimProto.FileInfo.Builder fileBuilder3 = TarimProto.FileInfo.newBuilder();
+
+        fileBuilder3.setFormat("PARQUET")
+                .setRowCount(2)
+                .setSizeInBytes(991)
+                .setPath("hdfs://10.201.0.82:9000/wpf0220/default_db/new_table12/data/class=class7/00000-0-70fa3de1-57dd-47e6-b7ff-13e44f781e9f-00003.parquet")
+                .putAllLowerBounds(Map.of(1,ByteString.copyFrom(new byte[]{9, 0, 0, 0}),
+                        2, ByteString.copyFrom(new byte[]{90, 0, 0, 0}),
+                        3, ByteString.copyFrom("class7".getBytes())))
+                .putAllUpperBounds(Map.of(1,ByteString.copyFrom(new byte[]{10, 0, 0, 0}),
+                        2, ByteString.copyFrom(new byte[]{100, 0, 0, 0}),
+                        3, ByteString.copyFrom("class7".getBytes())));
+
+        fileInfoList.add(fileBuilder3.build());
+
+
+    }
     //don't prepareScan to tarimDB for test , but keep the codes below
     /*
 

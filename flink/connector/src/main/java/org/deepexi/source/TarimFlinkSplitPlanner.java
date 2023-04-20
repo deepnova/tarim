@@ -15,10 +15,14 @@ import org.apache.iceberg.flink.FlinkSchemaUtil;
 import org.apache.iceberg.flink.TableLoader;
 import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.relocated.com.google.common.collect.FluentIterable;
+import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.transforms.Transform;
+import org.apache.iceberg.types.Types;
 import org.deepexi.ConnectorTarimTable;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.*;
 
 public class TarimFlinkSplitPlanner {
@@ -29,6 +33,18 @@ public class TarimFlinkSplitPlanner {
     //tarim table to load delta data
     static TarimFlinkInputSplit[] planInputSplits(Table tarimTable, Table icebergTable, TarimScanContext context) {
         RowType rowType = FlinkSchemaUtil.convert(tarimTable.schema());
+        Schema schema = context.project();
+        
+        //PartitionKey partitionKey = new PartitionKey(tarimTable.spec(), schema);
+        Set<Integer> ids = schema.identifierFieldIds();
+        List<Integer> identifierIdsList = new ArrayList<>(ids);
+
+        if (identifierIdsList.size() < 1){
+            throw new RuntimeException("planInputSplits error, the identifierIdsList is null!");
+        }
+
+        //use 0 now
+        int primaryKeyId = identifierIdsList.get(0);
 
         if(context.datafileFromIceberg()){
             //tmp: get the split for test
@@ -106,8 +122,22 @@ public class TarimFlinkSplitPlanner {
                 String lowerBound = "";
 
                 for (int index = 0; index < fileNumber; index++){
-                    id = 0;
                     ScanPartition.FileInfo fileInfo = partition.getFileInfoList().get(index);
+                    byte[] lowerBoundByte = fileInfo.lowerBounds.get(primaryKeyId);
+                    byte[] upperBoundByte = fileInfo.upperBounds.get(primaryKeyId);
+
+                    ByteBuffer lowerBoundBuffer = ByteBuffer.allocate(lowerBoundByte.length)
+                            .order(ByteOrder.LITTLE_ENDIAN).put(lowerBoundByte);
+                    ByteBuffer upperBoundBuffer = ByteBuffer.allocate(upperBoundByte.length)
+                            .order(ByteOrder.LITTLE_ENDIAN).put(upperBoundByte);
+
+                    byte[] col2LowerBound = fileInfo.lowerBounds.get(2);
+                    byte[] col2UpperBound = fileInfo.upperBounds.get(2);
+
+                    ByteBuffer col2LowerBoundBuffer = ByteBuffer.allocate(col2LowerBound.length)
+                            .order(ByteOrder.LITTLE_ENDIAN).put(col2LowerBound);
+                    ByteBuffer col2UpperBoundBuffer = ByteBuffer.allocate(col2UpperBound.length)
+                            .order(ByteOrder.LITTLE_ENDIAN).put(col2UpperBound);
 
                     if (planTotalSize > 512 * 1000 * 1000){
                         scans.add(new TarimCombinedScanTask(
@@ -132,14 +162,18 @@ public class TarimFlinkSplitPlanner {
                     DataFile datafile = DataFiles.builder(tarimTable.spec())
                             .withFormat(fileInfo.format)
                             .withPath(fileInfo.path)
-                            .withPartition(null)
+                            .withPartition(DataFiles.data(tarimTable.spec(), "class=class7"))
                             .withFileSizeInBytes(fileInfo.sizeInBytes)
-                            .withMetrics(new Metrics(fileInfo.rowCounts, new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>()))
+                            .withMetrics(new Metrics(fileInfo.rowCounts,
+                                    null,
+                                    null, // value count
+                                    null, // null count
+                                    null))
                             .withSplitOffsets(fileInfo.offsets)
                             .withSortOrder(null)
                             .build();
 
-                    TarimFileScanTask fileScanTask = new TarimFileScanTask(datafile, tarimTable.spec(), null, null);
+                    TarimFileScanTask fileScanTask = new TarimFileScanTask(datafile, null, tarimTable.spec(), null, null);
                     fileScanList.add(fileScanTask);
 
                     if (id == 0) {
@@ -154,9 +188,12 @@ public class TarimFlinkSplitPlanner {
                     if (planTotalSize == 0){
                         //the first range in each plan
                         //index for the primary
-                        lowerBound = fileInfo.lowerBounds.get(0);
+
+                        lowerBound = convertBound(lowerBoundBuffer, schema, primaryKeyId, lowerBoundByte.length);
+
                     }
-                    upperBound = fileInfo.upperBounds.get(0);
+
+                    upperBound = convertBound(upperBoundBuffer, schema, primaryKeyId, upperBoundByte.length);
                     partitionUpperType= 2;
 
                     planTotalSize += fileInfo.sizeInBytes;
@@ -195,6 +232,24 @@ public class TarimFlinkSplitPlanner {
                 splits[i] = new TarimFlinkInputSplit(i, scans.get(i));
             }
             return splits;
+        }
+    }
+
+    private static String convertBound(ByteBuffer byteBuffer, Schema schema, int id, int len){
+        if (len == 0){
+            throw new RuntimeException("convertBound err! the len is 0");
+        }
+
+        byteBuffer.flip();
+        Object fieldType = schema.findType(id);
+        if (fieldType instanceof Types.IntegerType){
+            return ((Integer)(byteBuffer.getInt())).toString();
+        }else if (fieldType instanceof Types.StringType){
+            byte[] newBuf = new byte[len];
+            byteBuffer.get(newBuf);
+            return new String(newBuf);
+        }else{
+            throw new RuntimeException("un support type!");
         }
     }
     static CloseableIterable<CombinedScanTask> planTasks(Table table, TarimScanContext context) {

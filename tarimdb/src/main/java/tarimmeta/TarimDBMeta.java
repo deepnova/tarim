@@ -60,7 +60,7 @@ public class TarimDBMeta extends TarimMetaGrpc.TarimMetaImplBase {
 
         field.setName("class");
         field.setTransform("identity");
-        field.setSourceID(2);
+        field.setSourceID(3);
         field.setFiledID(1000);
 
         spec.addFields(0, field.build());

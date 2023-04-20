@@ -17,11 +17,14 @@ import java.util.List;
 import java.util.Map;
 
 
+import org.apache.iceberg.types.Type;
+import org.apache.iceberg.types.Types;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONObject;
 
 import static org.apache.flink.api.common.typeinfo.BasicTypeInfo.INT_TYPE_INFO;
 import static org.apache.flink.api.common.typeinfo.BasicTypeInfo.STRING_TYPE_INFO;
+import static org.apache.iceberg.orc.ORCSchemaUtil.fieldId;
 
 public class ConnectorTarimCatalog implements Catalog {
 
@@ -163,7 +166,18 @@ public class ConnectorTarimCatalog implements Catalog {
                 }
 
                 TableSchema tableSchema = builder.build();
-                Schema icebergSchema = AvroSchemaUtil.toIceberg(avroSchema);
+                //the schema from this method, the index of the column is from 0, but the iceberg schema is from 1,
+                //so the index should be + 1
+                //Schema icebergSchema = AvroSchemaUtil.toIceberg(avroSchema);
+                List<Types.NestedField> nestedFields = AvroSchemaUtil.convert(avroSchema).asNestedType().asStructType().fields();
+                List<Types.NestedField> reorderFields = new ArrayList<>();
+                for (Types.NestedField field : nestedFields){
+                    Types.NestedField newField = Types.NestedField.of(field.fieldId() + 1,
+                            field.isOptional(), field.name(), field.type(), field.doc());
+                    reorderFields.add(newField);
+                }
+
+                Schema icebergSchema = new org.apache.iceberg.Schema(reorderFields);
 
                 //can not use jasonFormat, because the key is different between iceberg and grpc-protobuf-message
                 //TarimProto.PartitionSpecOrBuilder specMessage = response.getPartitionSpecOrBuilder();

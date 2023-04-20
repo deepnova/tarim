@@ -69,8 +69,8 @@ message FileInfo{
     string path = 1;
     string format = 2;
     int32 sizeInBytes = 3;
-    map<int32, string> lowerBounds = 4;
-    map<int32, string> upperBounds = 5;
+    map<int32, bytes> lowerBounds = 4;
+    map<int32, bytes> upperBounds = 5;
     repeated int64 offsets = 6;
     int64 rowCount = 7;
 }

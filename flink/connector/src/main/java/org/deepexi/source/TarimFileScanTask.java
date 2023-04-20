@@ -8,23 +8,25 @@ import java.util.List;
 
 public class TarimFileScanTask implements FileScanTask {
     private final DataFile file;
+    private final DeleteFile[] deletes;
     private final String schemaString;
     private final String specString;
     private PartitionSpec spec = null;
-    public TarimFileScanTask(DataFile file, PartitionSpec spec, String schemaString, String specString) {
+    public TarimFileScanTask(DataFile file, DeleteFile[] deletes, PartitionSpec spec, String schemaString, String specString) {
         this.file = file;
+        this.deletes = deletes != null ? deletes : new DeleteFile[0];
         this.spec = spec;
         this.schemaString = schemaString;
         this.specString = specString;
     }
     @Override
     public DataFile file() {
-        return null;
+        return file;
     }
 
     @Override
     public List<DeleteFile> deletes() {
-        return null;
+        return ImmutableList.copyOf(deletes);
     }
 
     @Override

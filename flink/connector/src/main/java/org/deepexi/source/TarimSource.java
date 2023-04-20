@@ -2,6 +2,7 @@ package org.deepexi.source;
 
 import com.deepexi.TarimMetaClient;
 import com.deepexi.rpc.TarimProto;
+import com.google.protobuf.ByteString;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ReadableConfig;
@@ -10,6 +11,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.config.ExecutionConfigOptions;
 import org.apache.flink.table.data.RowData;
+import org.apache.flink.table.planner.expressions.In;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.encryption.EncryptionManager;
@@ -205,9 +207,11 @@ public class TarimSource {
 
                     List<TarimProto.FileInfo> fileInfoList = partition.getFileInfoList();
 
+
                     for (TarimProto.FileInfo fileInfo :fileInfoList){
+
                         scanFileInfoList.add(new ScanPartition.FileInfo(fileInfo.getPath(), fileInfo.getFormat(), fileInfo.getSizeInBytes(),
-                                new HashMap<>(fileInfo.getLowerBoundsMap()) , new HashMap<>(fileInfo.getUpperBoundsMap()),
+                                convertMap(fileInfo.getLowerBoundsMap()) ,convertMap(fileInfo.getUpperBoundsMap()),
                                 new ArrayList<>(fileInfo.getOffsetsList()), fileInfo.getRowCount()));
                     }
 
@@ -238,6 +242,15 @@ public class TarimSource {
                     return null;
                 }
             }
+        }
+
+        private Map<Integer, byte[]> convertMap(Map<Integer, ByteString> srcMap){
+
+            Map<Integer, byte[]> dstMap = new HashMap<>();
+            for(Map.Entry<Integer, ByteString> entry: srcMap.entrySet()){
+                dstMap.put(entry.getKey(), entry.getValue().toByteArray());
+            }
+            return dstMap;
         }
 
         public TarimFlinkInputFormat buildFormat() {
@@ -271,7 +284,7 @@ public class TarimSource {
 
             //iceberg table to read parquet data
             //tarim table to load delta data
-            return new TarimFlinkInputFormat(tarimDbAdapt, tarimTable, icebergTable, icebergSchema, io, encryption, contextBuilder.build());
+            return new TarimFlinkInputFormat(tarimDbAdapt, tarimTable, icebergTable, tarimTable.schema(), io, encryption, contextBuilder.build());
         }
 
         int inferParallelism(FlinkInputFormat format, TarimScanContext context) {

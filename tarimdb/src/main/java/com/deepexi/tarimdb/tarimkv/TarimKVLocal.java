@@ -278,9 +278,11 @@ public class TarimKVLocal {
         ColumnFamilyHandle cfh = slot.getColumnFamilyHandle(cfName);
         String startKey = KeyValueCodec.ChunkOnlyKeyPrefixEncode(param.chunkID);
         ReadOptions readOpts = new ReadOptions();
+        String lowerBoundKey = KeyValueCodec.KeyPrefixEncode(param.chunkID, param.lowerBound);
+        String upperBoundKey = KeyValueCodec.KeyPrefixEncode(param.chunkID, param.upperBound);
 
         TarimKVProto.RangeData results = slot.deltaScan(readOpts, cfh, param.scanHandler, startKey, param.scanSize,
-                param.planID, param.lowerBound, param.upperBound, param.lowerBoundType, param.upperBoundType);
+                param.planID, lowerBoundKey, upperBoundKey, param.lowerBoundType, param.upperBoundType);
         return results;
     }
 
