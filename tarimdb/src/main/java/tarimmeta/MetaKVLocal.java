@@ -41,6 +41,7 @@ public class MetaKVLocal implements MetaKVClient{
 
         try {
             cfh = slot.getColumnFamilyHandle(cfName);
+            //todo check cfh
         } catch (RocksDBException e) {
             throw new RuntimeException(e);
         } catch (TarimKVException e) {

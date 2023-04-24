@@ -8,6 +8,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.source.InputFormatSourceFunction;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.config.ExecutionConfigOptions;
 import org.apache.flink.table.data.RowData;
@@ -201,10 +202,10 @@ public class TarimSource {
 
                 TarimProto.ScanInfo res = result.getScanInfo();
                 List<TarimProto.Partition> patitionList = res.getPartitionsList();
-                List<ScanPartition.FileInfo> scanFileInfoList = new ArrayList<>();
+
                 List<ScanPartition> scanList = new ArrayList<>();
                 for(TarimProto.Partition partition : patitionList){
-
+                    List<ScanPartition.FileInfo> scanFileInfoList = new ArrayList<>();
                     List<TarimProto.FileInfo> fileInfoList = partition.getFileInfoList();
 
 
@@ -229,6 +230,9 @@ public class TarimSource {
                 if (!context.isStreaming()) {
                     //int parallelism = inferParallelism(format, context);
                     int parallelism = 1;
+                    //ScanMergeSourceFunction function = new ScanMergeSourceFunction(format, typeInfo);
+                    //String mergeFunctionName = String.format("Iceberg table (%s) scan merge", tarimTable);
+                    //return env.addSource(function, mergeFunctionName, typeInfo).setParallelism(parallelism);
                     return env.createInput(format, typeInfo).setParallelism(parallelism);
                 } else {
                     //todo

@@ -17,6 +17,7 @@ import org.apache.iceberg.Schema;
 import org.apache.iceberg.flink.RowDataWrapper;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.deepexi.TarimDbClient;
+import org.deepexi.TarimPrimaryKey;
 import org.deepexi.WResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,13 +45,13 @@ public class TaskWriter implements TarimTaskWriter<RowData> {
     private RowDataToAvroConverters.RowDataToAvroConverter converter;
     private List<byte[]> dataList = new ArrayList<>();
     private static final Logger LOG = LoggerFactory.getLogger(TaskWriter.class);
-    private String primaryKey;
+    private TarimPrimaryKey tarimPrimaryKey;
 
     private TarimMetaClient metaClient;
 
-    public TaskWriter(int tableId, String primaryKey, RowType flinkSchema, int parallelism, Schema icebergSchema, PartitionSpec partitionSpec, String schemaJson, TarimMetaClient metaClient){
+    public TaskWriter(int tableId, TarimPrimaryKey tarimPrimaryKey, RowType flinkSchema, int parallelism, Schema icebergSchema, PartitionSpec partitionSpec, String schemaJson, TarimMetaClient metaClient){
         this.tableId = tableId;
-        this.primaryKey = primaryKey;
+        this.tarimPrimaryKey = tarimPrimaryKey;
         this.parallelism = parallelism;
         this.icebergSchema = icebergSchema;
         this.partitionSpec = partitionSpec;
@@ -160,7 +161,8 @@ public class TaskWriter implements TarimTaskWriter<RowData> {
             if (dataIndex >= batchNum){
 
                 byte[] recordByte = bytesOS.toByteArray();
-                int result = client.insertRequest(tableId, partitionID, recordByte, primaryKey);
+
+                int result = client.insertRequest(tableId, partitionID, recordByte, tarimPrimaryKey.getPrimaryKeys().get(0));
                 if (result != 0){
                     LOG.error("write, send the data fail! tableId={}, partitionID={}", tableId, partitionID);
                     throw new RuntimeException();
@@ -176,7 +178,7 @@ public class TaskWriter implements TarimTaskWriter<RowData> {
             if (bytesOS.size() > 0){
 
                 byte[] recordByte = bytesOS.toByteArray();
-                int result = client.insertRequest(tableId, partitionID, recordByte, primaryKey);
+                int result = client.insertRequest(tableId, partitionID, recordByte, tarimPrimaryKey.getPrimaryKeys().get(0));
                 if (result != 0){
                     LOG.error("Checkpoint send the data fail! tableId={}, partitionID={}", tableId, partitionID);
                     throw new RuntimeException();

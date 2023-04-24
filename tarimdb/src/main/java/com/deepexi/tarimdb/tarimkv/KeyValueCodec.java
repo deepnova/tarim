@@ -1,5 +1,7 @@
 package com.deepexi.tarimdb.tarimkv;
 
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Map;
 
 import com.google.protobuf.ByteString;
@@ -48,12 +50,15 @@ public class KeyValueCodec
     // Key固定编码：{chunkID}{separator}{primaryKey}
     public static String KeyEncode(KeyValueCodec kv) 
     {
+        //todo get the Type and convert  the primaryKey
+        Long key = Long.parseLong(kv.value.getKey());
+
         String internalKey = String.format("%d%s%s"
                                           ,kv.chunkID
                                           ,KeyValueCodec.KEY_SEPARATOR
-                                          ,kv.value.getKey());
+                                          ,keyLongBase16Codec(key));
         logger.debug("KeyEncode(), chunkID: " + kv.chunkID 
-                  + ", key: " + kv.value.getKey()
+                  + ", key: " + Arrays.toString(keyLongBase16Codec(key).getBytes())
                   + ", internalKey: " + internalKey);
         return internalKey;
     }
@@ -71,12 +76,15 @@ public class KeyValueCodec
 
     public static String KeyPrefixEncode(long chunkID, String prefix) 
     {
+        //todo get the Type and convert  the primaryKey
+        Long key = Long.parseLong(prefix);
+
         String internalKey = String.format("%d%s%s"
                                           ,chunkID
                                           ,KeyValueCodec.KEY_SEPARATOR
-                                          ,prefix);
+                                          ,keyLongBase16Codec(key));
         logger.debug("KeyPrefixEncode(), chunkID: " + chunkID 
-                  + ", prefix: " + prefix
+                  + ", prefix: " + Arrays.toString(keyLongBase16Codec(key).getBytes())
                   + ", internalKey prefix: " + internalKey);
         return internalKey;
     }
@@ -167,6 +175,40 @@ public class KeyValueCodec
         // un-used
         return null;
     }
+
+    public static String keyLongBase16Codec(long value) {
+        value = value ^ 0x8000000000000000L;
+
+        ByteBuffer buffer = ByteBuffer.allocate(8);
+        buffer.putLong(value);
+        byte[] bytes = buffer.array();
+
+        char[] chars = new char[bytes.length];
+        logger.info("after codec: " + Arrays.toString(bytes));
+        for (int i = 0; i < bytes.length; i++) {
+            chars[i] = (char) bytes[i];
+        }
+
+
+        return new String(chars);
+    }
+
+    public static String keyIntBase16Codec(int value) {
+        value = value ^ 0x80000000;
+
+        ByteBuffer buffer = ByteBuffer.allocate(4);
+        buffer.putInt(value);
+        byte[] bytes = buffer.array();
+
+        char[] chars = new char[bytes.length];
+        logger.info("after codec: " + Arrays.toString(bytes));
+        for (int i = 0; i < bytes.length; i++) {
+            chars[i] = (char) bytes[i];
+        }
+
+        return new String(chars);
+    }
+
 }
 
 

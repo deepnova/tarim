@@ -139,7 +139,7 @@ public class TarimKVLocal {
         String cfName = Integer.toString(request.getTableID());
         Slot slot = getSlot(request.getChunkID());
         ColumnFamilyHandle cfh = slot.getColumnFamilyHandle(cfName);
-
+        //todo check cfh
         List<String> internalKeys = new ArrayList<>();
         for(String key : request.getKeysList())
         {
@@ -172,6 +172,7 @@ public class TarimKVLocal {
         Slot slot = getSlot(request.getChunkID());
         ColumnFamilyHandle cfh = slot.getColumnFamilyHandle(cfName);
 
+        //todo check cfh
         String key = KeyValueCodec.KeyEncode(request.getChunkID(), request.getKey());
         logger.info("delete(), internal key: " + key);
         WriteOptions writeOpt = new WriteOptions();
@@ -227,6 +228,8 @@ public class TarimKVLocal {
         {
             Slot slot = getSlot(chunks[i]);
             ColumnFamilyHandle cfh = slot.getColumnFamilyHandle(cfName);
+            //todo check cfh
+
             KVSchema.ChunkDetail chunkDetail = new KVSchema.ChunkDetail();
             chunkDetail.chunkID = chunks[i];
             // get current snapshot, and keep it in memory until scan stop
@@ -276,6 +279,13 @@ public class TarimKVLocal {
         String cfName = Integer.toString(param.tableID);
         Slot slot = getSlot(param.chunkID);
         ColumnFamilyHandle cfh = slot.getColumnFamilyHandle(cfName);
+        if (cfh == null){
+            return TarimKVProto.RangeData.newBuilder()
+                    .setDataEnd(true)
+                    .addAllValues(new ArrayList())
+                    .build();
+        }
+
         String startKey = KeyValueCodec.ChunkOnlyKeyPrefixEncode(param.chunkID);
         ReadOptions readOpts = new ReadOptions();
         String lowerBoundKey = KeyValueCodec.KeyPrefixEncode(param.chunkID, param.lowerBound);

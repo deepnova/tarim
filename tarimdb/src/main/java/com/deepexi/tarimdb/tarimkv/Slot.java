@@ -124,12 +124,6 @@ public class Slot
     {
         // TODO: WriteBatch and Iterator need lock ?
         ColumnFamilyHandle cfHandle = mapColumnFamilyHandles.get(cfName);
-        logger.info("CF handles: " + mapColumnFamilyHandlestoString(cfName));
-        if(cfHandle == null)
-        {
-            logger.error("not found ColumnFamilyHandle of column family: " + cfName);
-            throw new TarimKVException(Status.NULL_POINTER);
-        }
         return cfHandle;
     }
 
@@ -290,6 +284,7 @@ public class Slot
         KeyValueCodec kvc;
         Boolean endFlag = false;
 
+
         if (!mapToIter.containsKey(planID)) {
             RocksIterator it = db.newIterator(cfHandle, readOpts);
 
@@ -298,8 +293,8 @@ public class Slot
             if (lowerBoundType == 0){
                 //NEGATIVE_INFINITY
                 for (it.seekToFirst();
-                     it.isValid()  && totalSize <= scanSize;
-                     it.next(), totalSize++){
+                     it.isValid()  && totalSize < scanSize;
+                     it.next()){
                     it.status();
                     if(it.key() == null || it.value() == null)
                     {
@@ -309,6 +304,8 @@ public class Slot
                     if (!getIteratorFilter(upperBoundType, upperBound, it.key(), startKey)){
                         continue;
                     }
+
+                    totalSize++;
 
                     kvc = KeyValueCodec.OpKeyDecode(new String(it.key()), it.value());
                     if(kvc == null){
@@ -326,13 +323,20 @@ public class Slot
                 }
             }else{
                 //NEGATIVE_INFINITY
+
                 for (it.seek(lowerBound.getBytes());
-                     it.isValid() && getIteratorFilter(upperBoundType, upperBound, it.key(), startKey) && totalSize <= scanSize;
+                     it.isValid() && getIteratorFilter(upperBoundType, upperBound, it.key(), startKey) && totalSize < scanSize;
                      it.next(), totalSize++){
                     it.status();
                     if(it.key() == null || it.value() == null)
                     {
                         throw new RocksDBException("deltaScan the key is null!");
+                    }
+
+                    if (lowerBound.equals(new String(it.key()))){
+                        //skip the first, because the range is (a,b]
+                        logger.info("the first key is skip" + it.key());
+                        continue;
                     }
 
                     kvc = KeyValueCodec.OpKeyDecode(new String(it.key()), it.value());
@@ -361,7 +365,7 @@ public class Slot
             RocksIterator iter = mapToIter.get(planID);
 
             if(iter == null) throw new TarimKVException(Status.NULL_POINTER);
-            for (; iter.isValid() && getIteratorFilter(upperBoundType, upperBound, iter.key(), startKey) && totalSize <= scanSize;
+            for (; iter.isValid() && getIteratorFilter(upperBoundType, upperBound, iter.key(), startKey) && totalSize < scanSize;
                  iter.next(), totalSize++){
                 iter.status();
                 if(iter.key() == null || iter.value() == null)

@@ -140,8 +140,8 @@ public class TarimTableSource implements ScanTableSource, SupportsProjectionPush
 
         List<String> partitionKeys = ((ConnectorTarimTable)tarimTable).getPartitionKey();
         //todo the primaryKey maybe many
-        List<String> primaryKeys = new ArrayList<>();
-        primaryKeys.add(((ConnectorTarimTable)tarimTable).getPrimaryKey());
+        List<String> primaryKeys;
+        primaryKeys = ((ConnectorTarimTable)tarimTable).getPrimaryKey().getPrimaryKeys();
 
         for (ResolvedExpression resolvedExpression : flinkFilters) {
             TarimFlinkFilters.convert(resolvedExpression,partitionKeys, primaryKeys);

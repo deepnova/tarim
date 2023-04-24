@@ -5,6 +5,7 @@ import com.deepexi.rpc.TarimProto;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.table.api.TableSchema;
 
+import org.apache.flink.table.planner.expressions.In;
 import org.apache.iceberg.*;
 import org.apache.iceberg.avro.AvroSchemaUtil;
 import org.apache.iceberg.catalog.Catalog;
@@ -157,7 +158,8 @@ public class ConnectorTarimCatalog implements Catalog {
                     builder.field(fieid.name(), TarimTypeToFlinkType.convertToDataType(fieid.schema().toString()).notNull());
                 }
 
-                builder.primaryKey(response.getPrimaryKey());
+                String primaryKey = response.getPrimaryKey();
+                builder.primaryKey(primaryKey);
 
                 List<String> partitionKey = new ArrayList<>();
                 if (response.getParitionKeysCount() > 0) {
@@ -171,13 +173,29 @@ public class ConnectorTarimCatalog implements Catalog {
                 //Schema icebergSchema = AvroSchemaUtil.toIceberg(avroSchema);
                 List<Types.NestedField> nestedFields = AvroSchemaUtil.convert(avroSchema).asNestedType().asStructType().fields();
                 List<Types.NestedField> reorderFields = new ArrayList<>();
+                List<String> primaryKeys = new ArrayList<>();
+                primaryKeys.add(primaryKey);
+                List<Type.TypeID> pkTypes = new ArrayList<>();
+                List<Integer> pkIDs = new ArrayList<>();
+
                 for (Types.NestedField field : nestedFields){
                     Types.NestedField newField = Types.NestedField.of(field.fieldId() + 1,
                             field.isOptional(), field.name(), field.type(), field.doc());
+                    Type type = field.type();
+
+                    if (primaryKey.equals(field.name())){
+                        Type.PrimitiveType priType = type.asPrimitiveType();
+                        pkTypes.add(priType.typeId());
+                        pkIDs.add(field.fieldId() + 1);
+                    }
+
                     reorderFields.add(newField);
                 }
 
+
                 Schema icebergSchema = new org.apache.iceberg.Schema(reorderFields);
+
+                TarimPrimaryKey tarimPrimaryKey = new TarimPrimaryKey(primaryKeys, pkTypes, pkIDs, icebergSchema);
 
                 //can not use jasonFormat, because the key is different between iceberg and grpc-protobuf-message
                 //TarimProto.PartitionSpecOrBuilder specMessage = response.getPartitionSpecOrBuilder();
@@ -205,7 +223,7 @@ public class ConnectorTarimCatalog implements Catalog {
                 String jsonString = fieldSpec.toString();
                 PartitionSpec  partitionSpec = PartitionSpecParser.fromJson(icebergSchema, jsonString);
 
-                return new ConnectorTarimTable(tableIdentifier.name(), response.getTableID(), tableSchema, partitionKey, partitionSpec, icebergSchema, tarimTableSchema, response.getPrimaryKey());
+                return new ConnectorTarimTable(tableIdentifier.name(), response.getTableID(), tableSchema, partitionKey, partitionSpec, icebergSchema, tarimTableSchema, tarimPrimaryKey);
             }
         } catch (Exception e) {
             throw new RuntimeException(e);

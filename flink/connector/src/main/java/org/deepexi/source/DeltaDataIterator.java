@@ -115,5 +115,4 @@ public class DeltaDataIterator implements Iterator<DeltaData> {
         pos++;
         return delta;
     }
-
 }

@@ -22,7 +22,7 @@ public class ConnectorTarimTable implements Table, Serializable {
     private PartitionSpec partitionSpec;
     private Schema schema;
     private String schemaJson;
-    private String primaryKey;
+    private TarimPrimaryKey primaryKey;
 
     public TarimMetaClient metaClient;
 
@@ -32,7 +32,7 @@ public class ConnectorTarimTable implements Table, Serializable {
         this.name = name;
     }
 
-    public ConnectorTarimTable(String name, int tableId, TableSchema flinkSchema, List<String> partitionKey, PartitionSpec partitionSpec, Schema schema, String schemaJson, String primaryKey){
+    public ConnectorTarimTable(String name, int tableId, TableSchema flinkSchema, List<String> partitionKey, PartitionSpec partitionSpec, Schema schema, String schemaJson, TarimPrimaryKey tarimPrimaryKey){
         this.name = name;
         this.tableId = tableId;
         this.flinkSchema = flinkSchema;
@@ -40,7 +40,7 @@ public class ConnectorTarimTable implements Table, Serializable {
         this.partitionSpec = partitionSpec;
         this.schema = schema;
         this.schemaJson = schemaJson;
-        this.primaryKey = primaryKey;
+        this.primaryKey = tarimPrimaryKey;
     }
 
     public void setMetaClient(TarimMetaClient metaClient){
@@ -65,7 +65,7 @@ public class ConnectorTarimTable implements Table, Serializable {
         return partitionKey;
     }
 
-    public String getPrimaryKey(){
+    public TarimPrimaryKey getPrimaryKey(){
         return primaryKey;
     }
 

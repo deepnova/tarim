@@ -17,7 +17,7 @@ public class SerializableTarimTable implements Table, Serializable {
     private PartitionSpec partitionSpec;
     private Schema schema;
     private String schemaJson;
-    private String primaryKey;
+    private TarimPrimaryKey primaryKey;
     private TarimMetaClient metaClient;
     private SerializableTarimTable(ConnectorTarimTable table) {
         this.name = table.getName();
@@ -36,7 +36,7 @@ public class SerializableTarimTable implements Table, Serializable {
 
     public String getSchemaJson() {return schemaJson;}
 
-    public String getPrimaryKey() {
+    public TarimPrimaryKey getPrimaryKey() {
         return this.primaryKey;
     }
 

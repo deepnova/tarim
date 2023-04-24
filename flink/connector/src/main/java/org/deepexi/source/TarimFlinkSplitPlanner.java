@@ -121,109 +121,134 @@ public class TarimFlinkSplitPlanner {
                 String upperBound = "";
                 String lowerBound = "";
 
-                for (int index = 0; index < fileNumber; index++){
-                    ScanPartition.FileInfo fileInfo = partition.getFileInfoList().get(index);
-                    byte[] lowerBoundByte = fileInfo.lowerBounds.get(primaryKeyId);
-                    byte[] upperBoundByte = fileInfo.upperBounds.get(primaryKeyId);
+                if (fileNumber > 0){
+                    for (int index = 0; index < fileNumber; index++){
+                        ScanPartition.FileInfo fileInfo = partition.getFileInfoList().get(index);
+                        byte[] lowerBoundByte = fileInfo.lowerBounds.get(primaryKeyId);
+                        byte[] upperBoundByte = fileInfo.upperBounds.get(primaryKeyId);
 
-                    ByteBuffer lowerBoundBuffer = ByteBuffer.allocate(lowerBoundByte.length)
-                            .order(ByteOrder.LITTLE_ENDIAN).put(lowerBoundByte);
-                    ByteBuffer upperBoundBuffer = ByteBuffer.allocate(upperBoundByte.length)
-                            .order(ByteOrder.LITTLE_ENDIAN).put(upperBoundByte);
+                        ByteBuffer lowerBoundBuffer = ByteBuffer.allocate(lowerBoundByte.length)
+                                .order(ByteOrder.LITTLE_ENDIAN).put(lowerBoundByte);
+                        ByteBuffer upperBoundBuffer = ByteBuffer.allocate(upperBoundByte.length)
+                                .order(ByteOrder.LITTLE_ENDIAN).put(upperBoundByte);
 
-                    byte[] col2LowerBound = fileInfo.lowerBounds.get(2);
-                    byte[] col2UpperBound = fileInfo.upperBounds.get(2);
+                        byte[] col2LowerBound = fileInfo.lowerBounds.get(2);
+                        byte[] col2UpperBound = fileInfo.upperBounds.get(2);
 
-                    ByteBuffer col2LowerBoundBuffer = ByteBuffer.allocate(col2LowerBound.length)
-                            .order(ByteOrder.LITTLE_ENDIAN).put(col2LowerBound);
-                    ByteBuffer col2UpperBoundBuffer = ByteBuffer.allocate(col2UpperBound.length)
-                            .order(ByteOrder.LITTLE_ENDIAN).put(col2UpperBound);
+                        ByteBuffer col2LowerBoundBuffer = ByteBuffer.allocate(col2LowerBound.length)
+                                .order(ByteOrder.LITTLE_ENDIAN).put(col2LowerBound);
+                        ByteBuffer col2UpperBoundBuffer = ByteBuffer.allocate(col2UpperBound.length)
+                                .order(ByteOrder.LITTLE_ENDIAN).put(col2UpperBound);
 
-                    if (planTotalSize > 512 * 1000 * 1000){
-                        scans.add(new TarimCombinedScanTask(
-                                ((ConnectorTarimTable) tarimTable).getTableId(),
-                                rowType,
-                                ((ConnectorTarimTable) tarimTable).getSchemaJson(),
-                                partition.getPartitionID(),
-                                0,
-                                partition.getHost(),
-                                partition.getPort(),
-                                new ArrayList<>(fileScanList),
-                                id,
-                                lowerBound,
-                                upperBound,
-                                partitionLowerType,
-                                partitionUpperType));
-                        fileScanList.clear();
-                        planTotalSize = 0;
-                        id++;
-                    }
-
-                    DataFile datafile = DataFiles.builder(tarimTable.spec())
-                            .withFormat(fileInfo.format)
-                            .withPath(fileInfo.path)
-                            .withPartition(DataFiles.data(tarimTable.spec(), "class=class7"))
-                            .withFileSizeInBytes(fileInfo.sizeInBytes)
-                            .withMetrics(new Metrics(fileInfo.rowCounts,
-                                    null,
-                                    null, // value count
-                                    null, // null count
-                                    null))
-                            .withSplitOffsets(fileInfo.offsets)
-                            .withSortOrder(null)
-                            .build();
-
-                    TarimFileScanTask fileScanTask = new TarimFileScanTask(datafile, null, tarimTable.spec(), null, null);
-                    fileScanList.add(fileScanTask);
-
-                    if (id == 0) {
-                        //the first plan
-                        if (partition.getPartitionLowerBound().equals("")) {
-                            partitionLowerType = 0;
-                        } else {
-                            partitionLowerType = 1;
-                        }
-                    }
-
-                    if (planTotalSize == 0){
-                        //the first range in each plan
-                        //index for the primary
-
-                        lowerBound = convertBound(lowerBoundBuffer, schema, primaryKeyId, lowerBoundByte.length);
-
-                    }
-
-                    upperBound = convertBound(upperBoundBuffer, schema, primaryKeyId, upperBoundByte.length);
-                    partitionUpperType= 2;
-
-                    planTotalSize += fileInfo.sizeInBytes;
-
-                    if (index == (fileNumber - 1)){
-                        //the first plan
-                        if (partition.getPartitionUpperBound().equals("")){
-                            partitionUpperType = 0;
-                        }else{
-                            partitionUpperType = 1;
+                        //if (planTotalSize > 512 * 1000 * 1000){
+                        if (planTotalSize > 1000){
+                            TarimCombinedScanTask task = new TarimCombinedScanTask(
+                                    ((ConnectorTarimTable) tarimTable).getTableId(),
+                                    rowType,
+                                    ((ConnectorTarimTable) tarimTable).getSchemaJson(),
+                                    partition.getPartitionID(),
+                                    0,
+                                    partition.getHost(),
+                                    partition.getPort(),
+                                    new ArrayList<>(fileScanList),
+                                    id,
+                                    lowerBound,
+                                    upperBound,
+                                    partitionLowerType,
+                                    partitionUpperType);
+                            scans.add(task);
+                            fileScanList.clear();
+                            planTotalSize = 0;
+                            id++;
                         }
 
-                        scans.add(new TarimCombinedScanTask(
-                                ((ConnectorTarimTable) tarimTable).getTableId(),
-                                rowType,
-                                ((ConnectorTarimTable) tarimTable).getSchemaJson(),
-                                partition.getPartitionID(),
-                                0,
-                                partition.getHost(),
-                                partition.getPort(),
-                                new ArrayList<>(fileScanList),
-                                id,
-                                lowerBound,
-                                upperBound,
-                                partitionLowerType,
-                                partitionUpperType));
+                        DataFile datafile = DataFiles.builder(tarimTable.spec())
+                                .withFormat(fileInfo.format)
+                                .withPath(fileInfo.path)
+                                .withPartition(DataFiles.data(tarimTable.spec(), partition.getPartitionID()))
+                                .withFileSizeInBytes(fileInfo.sizeInBytes)
+                                .withMetrics(new Metrics(fileInfo.rowCounts,
+                                        null,
+                                        null, // value count
+                                        null, // null count
+                                        null))
+                                .withSplitOffsets(fileInfo.offsets)
+                                .withSortOrder(null)
+                                .build();
 
-                        fileScanList.clear();
-                        planTotalSize = 0;
+                        TarimFileScanTask fileScanTask = new TarimFileScanTask(datafile, null, tarimTable.spec(), null, null);
+                        fileScanList.add(fileScanTask);
+                        if (planTotalSize == 0){
+                            if (id == 0) {
+                                //the first plan
+                                if (partition.getPartitionLowerBound().equals("")) {
+                                    partitionLowerType = 0;
+                                    //the lowerBound is not used in this case
+                                    lowerBound = convertBound(lowerBoundBuffer, schema, primaryKeyId, lowerBoundByte.length);
+                                } else {
+                                    partitionLowerType = 1;
+                                    //todo, set the lowerBound from the partition.getPartitionLowerBound
+                                    //use lowerBoundBuffer tmp
+                                    lowerBound = convertBound(lowerBoundBuffer, schema, primaryKeyId, lowerBoundByte.length);
+                                }
+
+                            }else{
+                                partitionLowerType = 1;
+                                //the first range in each plan
+                                //index for the primary
+                                //the lowerBound = pre range upperBound
+                                lowerBound = upperBound;
+                            }
+                        }
+
+
+                        upperBound = convertBound(upperBoundBuffer, schema, primaryKeyId, upperBoundByte.length);
+                        partitionUpperType= 2;
+
+                        planTotalSize += fileInfo.sizeInBytes;
+
+                        if (index == (fileNumber - 1)){
+                            //the first plan
+                            if (partition.getPartitionUpperBound().equals("")){
+                                partitionUpperType = 0;
+                            }else{
+                                partitionUpperType = 1;
+                            }
+
+                            scans.add(new TarimCombinedScanTask(
+                                    ((ConnectorTarimTable) tarimTable).getTableId(),
+                                    rowType,
+                                    ((ConnectorTarimTable) tarimTable).getSchemaJson(),
+                                    partition.getPartitionID(),
+                                    0,
+                                    partition.getHost(),
+                                    partition.getPort(),
+                                    new ArrayList<>(fileScanList),
+                                    id,
+                                    lowerBound,
+                                    upperBound,
+                                    partitionLowerType,
+                                    partitionUpperType));
+
+                            fileScanList.clear();
+                            planTotalSize = 0;
+                        }
                     }
+                }else{
+                    scans.add(new TarimCombinedScanTask(
+                            ((ConnectorTarimTable) tarimTable).getTableId(),
+                            rowType,
+                            ((ConnectorTarimTable) tarimTable).getSchemaJson(),
+                            partition.getPartitionID(),
+                            0,
+                            partition.getHost(),
+                            partition.getPort(),
+                            new ArrayList<>(),
+                            0,
+                            "1",//tmp
+                            "1",//tmp
+                            0,
+                            0));
                 }
             }
 

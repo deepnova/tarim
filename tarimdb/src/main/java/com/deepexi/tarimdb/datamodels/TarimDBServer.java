@@ -92,7 +92,7 @@ public class TarimDBServer extends TarimGrpc.TarimImplBase {
         int scanSize = request.getScanSize();
         String planID = request.getPlanID();
         String lowerBound = request.getLowerBound();
-        String upperBound = request.getLowerBound();
+        String upperBound = request.getUpperBound();
         int lowerBoundType = request.getLowerBoundType();
         int upperBoundType = request.getUpperBoundType();
         long snapshotID = request.getSnapshotID(); //don't use now
