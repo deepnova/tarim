@@ -64,7 +64,14 @@ public class TarimDBServer extends TarimGrpc.TarimImplBase {
     public void lookup(TarimProto.LookupRequest request,
                        StreamObserver<TarimProto.LookupResponse> responseObserver) 
     {
-        //TODO
+        int tableID = request.getTableID();
+        String partitionID = request.getPartitionID();
+        String primaryKey = request.getPrimaryKey();
+
+        TarimProto.LookupResponse response = db.lookupMsgProc(tableID, partitionID, primaryKey);
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
     }
 
     public void prepareScan(TarimProto.PrepareMetaNodeScanRequest request,

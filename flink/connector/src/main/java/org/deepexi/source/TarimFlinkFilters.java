@@ -12,14 +12,14 @@ import org.apache.iceberg.flink.FlinkFilters;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.util.DateTimeUtil;
 import org.apache.iceberg.util.NaNUtil;
+import org.deepexi.FlinkSqlPrimaryKey;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -30,9 +30,14 @@ public class TarimFlinkFilters {
     }
 
     public static boolean partitionFilter = false;
+    public static boolean partitionEqFilter = false;
     public static boolean primaryKeyFilter = false;
     public static boolean otherFilter = false;
+    public static HashSet<String> partitionValues = new HashSet<>();
+    public static HashSet<FlinkSqlPrimaryKey> flinkSqlPrimaryKeys = new HashSet<>();
     private static final Pattern STARTS_WITH_PATTERN = Pattern.compile("([^%]+)%");
+
+    private static FilterStatus status = FilterStatus.STATUS_ADD;
 
     private static final Map<FunctionDefinition, Expression.Operation> FILTERS = ImmutableMap
             .<FunctionDefinition, Expression.Operation>builder()
@@ -82,16 +87,16 @@ public class TarimFlinkFilters {
                             .map(Expressions::notNull);
 
                 case LT:
-                    return convertFieldAndLiteral(Expressions::lessThan, Expressions::greaterThan, call, partitionKeys, primaryKeys);
+                    return convertFieldAndLiteral(Expressions::lessThan, Expressions::greaterThan, call, partitionKeys, primaryKeys, op);
 
                 case LT_EQ:
-                    return convertFieldAndLiteral(Expressions::lessThanOrEqual, Expressions::greaterThanOrEqual, call, partitionKeys, primaryKeys);
+                    return convertFieldAndLiteral(Expressions::lessThanOrEqual, Expressions::greaterThanOrEqual, call, partitionKeys, primaryKeys, op);
 
                 case GT:
-                    return convertFieldAndLiteral(Expressions::greaterThan, Expressions::lessThan, call, partitionKeys, primaryKeys);
+                    return convertFieldAndLiteral(Expressions::greaterThan, Expressions::lessThan, call, partitionKeys, primaryKeys, op);
 
                 case GT_EQ:
-                    return convertFieldAndLiteral(Expressions::greaterThanOrEqual, Expressions::lessThanOrEqual, call, partitionKeys, primaryKeys);
+                    return convertFieldAndLiteral(Expressions::greaterThanOrEqual, Expressions::lessThanOrEqual, call, partitionKeys, primaryKeys, op);
 
                 case EQ:
                     return convertFieldAndLiteral((ref, lit) -> {
@@ -100,7 +105,7 @@ public class TarimFlinkFilters {
                         } else {
                             return Expressions.equal(ref, lit);
                         }
-                    }, call, partitionKeys, primaryKeys);
+                    }, call, partitionKeys, primaryKeys, op);
 
                 case NOT_EQ:
                     return convertFieldAndLiteral((ref, lit) -> {
@@ -109,15 +114,17 @@ public class TarimFlinkFilters {
                         } else {
                             return Expressions.notEqual(ref, lit);
                         }
-                    }, call, partitionKeys, primaryKeys);
+                    }, call, partitionKeys, primaryKeys, op);
 
                 case NOT:
                     return onlyChildAs(call, CallExpression.class).flatMap(FlinkFilters::convert).map(Expressions::not);
 
                 case AND:
+                    status = FilterStatus.STATUS_ADD;
                     return convertLogicExpression(Expressions::and, call, partitionKeys, primaryKeys);
 
                 case OR:
+                    status = FilterStatus.STATUS_OR;
                     return convertLogicExpression(Expressions::or, call, partitionKeys, primaryKeys);
 
                 case STARTS_WITH:
@@ -206,13 +213,14 @@ public class TarimFlinkFilters {
     }
 
     private static Optional<Expression> convertFieldAndLiteral(BiFunction<String, Object, Expression> expr,
-                                                               CallExpression call, List<String> partitionKeys, List<String> primaryKeys) {
-        return convertFieldAndLiteral(expr, expr, call, partitionKeys, primaryKeys);
+                                                               CallExpression call, List<String> partitionKeys,
+                                                               List<String> primaryKeys, Expression.Operation op) {
+        return convertFieldAndLiteral(expr, expr, call, partitionKeys, primaryKeys, op);
     }
 
     private static Optional<Expression> convertFieldAndLiteral(
             BiFunction<String, Object, Expression> convertLR, BiFunction<String, Object, Expression> convertRL,
-            CallExpression call, List<String> partitionKeys, List<String> primaryKeys) {
+            CallExpression call, List<String> partitionKeys, List<String> primaryKeys, Expression.Operation op) {
         List<ResolvedExpression> args = call.getResolvedChildren();
         if (args.size() != 2) {
             return Optional.empty();
@@ -223,47 +231,54 @@ public class TarimFlinkFilters {
 
         if (left instanceof FieldReferenceExpression && right instanceof ValueLiteralExpression) {
             String name = ((FieldReferenceExpression) left).getName();
-            for (String partitionKey: partitionKeys){
-                if (partitionKey.equals(name)){
-                    partitionFilter = true;
-                }else{
-                    for (String primaryKey: primaryKeys){
-                        if (primaryKey.equals(name)){
-                            primaryKeyFilter = true;
-                        }
-                        else{
-                            otherFilter = true;
-                        }
-                    }
-                }
-            }
-
             Optional<Object> lit = convertLiteral((ValueLiteralExpression) right);
+            setFilter(partitionKeys, primaryKeys, op, name, lit);
             if (lit.isPresent()) {
                 return Optional.of(convertLR.apply(name, lit.get()));
             }
         } else if (left instanceof ValueLiteralExpression && right instanceof FieldReferenceExpression) {
             Optional<Object> lit = convertLiteral((ValueLiteralExpression) left);
             String name = ((FieldReferenceExpression) right).getName();
-            for (String partitionKey: partitionKeys){
-                if (partitionKey.equals(name)){
-                    partitionFilter = true;
-                }else{
-                    for (String primaryKey: primaryKeys){
-                        if (primaryKey.equals(name)){
-                            primaryKeyFilter = true;
-                        }
-                        else{
-                            otherFilter = true;
-                        }
-                    }
-                }
-            }
+            setFilter(partitionKeys, primaryKeys, op, name, lit);
             if (lit.isPresent()) {
                 return Optional.of(convertRL.apply(name, lit.get()));
             }
         }
 
         return Optional.empty();
+    }
+
+    private static void setFilter(List<String> partitionKeys, List<String> primaryKeys, Expression.Operation op,
+                                  String name, Optional<Object> lit){
+        for (String partitionKey: partitionKeys){
+            if (partitionKey.equals(name)){
+                partitionFilter = true;
+                if (status == FilterStatus.STATUS_ADD && op == Expression.Operation.EQ){
+                    partitionValues.add(lit.get().toString());
+                    partitionEqFilter = true;
+                }else{
+                    otherFilter = true;
+                }
+            }else{
+                for (String primaryKey: primaryKeys){
+                    if (primaryKey.equals(name)){
+                        if (op == Expression.Operation.EQ && !otherFilter){
+                            primaryKeyFilter = true;
+                            flinkSqlPrimaryKeys.add(new FlinkSqlPrimaryKey(name, lit.get().toString()));
+                        }else{
+                            otherFilter = true;
+                        }
+                    }
+                    else{
+                        otherFilter = true;
+                    }
+                }
+            }
+        }
+
+    }
+    private enum FilterStatus{
+        STATUS_ADD,
+        STATUS_OR;
     }
 }

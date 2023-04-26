@@ -8,6 +8,8 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.types.Type;
 
 import java.lang.reflect.Array;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.List;
 
 public class TarimPrimaryKey implements StructLike, Serializable {
@@ -60,5 +62,57 @@ public class TarimPrimaryKey implements StructLike, Serializable {
     @Override
     public <T> void set(int i, T value) {
         this.primaryKeyTuple[i] = value;
+    }
+
+    public String codecPrimaryValue(List<String> primaryKeyValues){
+        StringBuffer buf = new StringBuffer();
+        for (int i = 0; i < primaryKeyValues.size();i++){
+            Type.TypeID id = types.get(i);
+            switch (id){
+                case INTEGER:
+                    buf.append(keyIntBase16Codec(Integer.parseInt(primaryKeyValues.get(i))));
+                    //buf.append(keyLongBase16Codec(Long.parseLong(primaryKeyValues.get(i))));
+                    break;
+                case LONG:
+                    buf.append(keyLongBase16Codec(Long.parseLong(primaryKeyValues.get(i))));
+                    break;
+                case STRING:
+                    buf.append(primaryKeyValues.get(i));
+                    break;
+                default:
+                    throw new RuntimeException("un support primary type!");
+
+            }
+        }
+        return buf.toString();
+    }
+
+    public String keyLongBase16Codec(long value) {
+        value = value ^ 0x8000000000000000L;
+
+        ByteBuffer buffer = ByteBuffer.allocate(8);
+        buffer.putLong(value);
+        byte[] bytes = buffer.array();
+        char[] chars = new char[bytes.length];
+        for (int i = 0; i < bytes.length; i++) {
+            chars[i] = (char) bytes[i];
+        }
+
+        return new String(chars);
+    }
+
+    public String keyIntBase16Codec(int value) {
+        value = value ^ 0x80000000;
+
+        ByteBuffer buffer = ByteBuffer.allocate(4);
+        buffer.putInt(value);
+        byte[] bytes = buffer.array();
+
+        char[] chars = new char[bytes.length];
+        for (int i = 0; i < bytes.length; i++) {
+            chars[i] = (char) bytes[i];
+        }
+
+        return new String(chars);
     }
 }

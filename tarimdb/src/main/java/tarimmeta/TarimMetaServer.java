@@ -142,7 +142,6 @@ public class TarimMetaServer {
         List<String> filePath = new ArrayList<>();
         List<String> partitionList = new ArrayList<>();
 
-        Evaluator evaluator = changeConditionsToEval(conditions);
         String prefix;
         if (allFlag){
             prefix = String.format("%d_" ,tableID);
@@ -159,6 +158,7 @@ public class TarimMetaServer {
                     logger.error("get partitionKey error!");
                     continue;
                 }else{
+                    Evaluator evaluator = changeConditionsToEval(conditions);
                     result = evaluator.eval(Common.Row.of(key[1]));
                 }
 

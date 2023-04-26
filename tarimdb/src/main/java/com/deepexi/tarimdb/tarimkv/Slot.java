@@ -146,8 +146,12 @@ public class Slot
                   + ", slot id: " + getSlotID()
                   + ", key size: " + keyList.size()
                   + ", value size: " + values.size());
-        logger.info("multiGet(), keys: " + Common.BytesListToString(keyList)
-                  + ", values: " + Common.BytesListToString(values));
+        logger.info("multiGet()" + Common.BytesListToString(keyList));
+        for (byte[] value: values){
+            if (value != null){
+                logger.info("value:" + Arrays.toString(value));
+            }
+        }
         return values;
     }
 

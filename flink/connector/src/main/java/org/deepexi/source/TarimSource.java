@@ -1,9 +1,11 @@
 package org.deepexi.source;
 
+import com.deepexi.KvNode;
 import com.deepexi.TarimMetaClient;
 import com.deepexi.rpc.TarimProto;
 import com.google.protobuf.ByteString;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.calcite.shaded.org.apache.commons.codec.digest.MurmurHash3;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -27,13 +29,14 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
+import org.apache.iceberg.relocated.com.google.common.base.Predicate;
+import org.apache.iceberg.relocated.com.google.common.collect.FluentIterable;
 import org.deepexi.ConnectorTarimTable;
+import org.deepexi.FlinkSqlPrimaryKey;
 import org.deepexi.TarimDbAdapt;
+import org.deepexi.TarimPrimaryKey;
 
 import static org.deepexi.TarimUtil.serialize;
 
@@ -162,8 +165,23 @@ public class TarimSource {
             return this;
         }
 
+        public Builder partitionEqFilter(boolean partitionKeyFilter) {
+            contextBuilder.partitionEqFilter(partitionKeyFilter);
+            return this;
+        }
+
         public Builder otherFilter(boolean otherFilter) {
             contextBuilder.otherFilter(otherFilter);
+            return this;
+        }
+
+        public Builder partitionKey(Set<String> partitionKeys) {
+            contextBuilder.partitionKey(partitionKeys);
+            return this;
+        }
+
+        public Builder primaryKey(Set<FlinkSqlPrimaryKey> primaryKeys) {
+            contextBuilder.primaryKey(primaryKeys);
             return this;
         }
 
@@ -172,30 +190,75 @@ public class TarimSource {
             boolean allPartitionFlag = false;
             boolean doLookup = false;
 
-            if (contextBuilder.getPartitionKeyFilter()){
-                if (!contextBuilder.getPrimaryKeyFilter()){
-                    //do scan, prepareScan
-                    if (contextBuilder.getOtherFilter()){
-                        allPartitionFlag = true;
-                    }
-                }else{
-                    if (contextBuilder.getOtherFilter()){
-                        allPartitionFlag = true;
-                    }else{
+            Iterator<String> iter = contextBuilder.partitionKeys.iterator();
+            String primaryStr = "";
+            String partitionStr = "";
+
+
+            TarimPrimaryKey tarimPrimaryKey = ((ConnectorTarimTable)tarimTable).getPrimaryKey();
+            List<String> primaryKey = tarimPrimaryKey.getPrimaryKeys();
+
+            List<String> primaryKeyValues = new ArrayList<>();
+
+            if (contextBuilder.getOtherFilter()){
+                allPartitionFlag = true;
+            }else if (contextBuilder.getPartitionKeyFilter()){
+                if (contextBuilder.getPartitionEqFilter() && contextBuilder.getPrimaryKeyFilter()){
+                    //support 1 partitionKey now
+                    if (contextBuilder.partitionKeys.size() == 1){
+                        partitionStr = iter.next();
+
+                        for (String pk: primaryKey){
+                            FluentIterable<FlinkSqlPrimaryKey> filter =
+                                    FluentIterable.from(contextBuilder.primaryKeys).filter(new Predicate<FlinkSqlPrimaryKey>(){
+                                        @Override
+                                        public boolean apply(FlinkSqlPrimaryKey primaryKey) {
+                                            return primaryKey.getPrimaryKey().equals(pk);
+                                        }
+                                    });
+
+                            int i = 0;
+                            for (FlinkSqlPrimaryKey key: filter){
+                                primaryKeyValues.add(key.getValue());
+                                i++;
+                            }
+                            if (i != 1){
+                                break;
+                            }
+                        }
                         doLookup = true;
                     }
                 }
-            }else{
-                allPartitionFlag = true;
             }
 
             if (doLookup){
                 //todo
-                return null;
+                Schema schema = tarimTable.schema();
+                int tableID = ((ConnectorTarimTable)tarimTable).getTableId();
+                TypeInformation<RowData> typeInfo = FlinkCompatibilityUtil.toTypeInfo(FlinkSchemaUtil.convert(schema));
+                metaClient = new TarimMetaClient("127.0.0.1", 1301);
+                String partitionID = getPartitionID((ConnectorTarimTable)tarimTable, partitionStr);
+
+                long chunkID = partitionID.hashCode() & 0x00000000FFFFFFFFL;
+                long hash = MurmurHash3.hash32(chunkID) & 0x00000000FFFFFFFFL;
+                KvNode node = metaClient.getMasterReplicaNode(hash);
+                TarimProto.DbStatusResponse response = metaClient.partitionRequest(tableID, partitionID);
+                //todo check
+                if (node.host == null || response.getCode() != 0){
+                    throw new RuntimeException("the result is incorrect from meta node!!");
+                }
+
+                LookupSourceFunction testFun = new LookupSourceFunction(schema, tableID, ((ConnectorTarimTable)tarimTable).getSchemaJson(),
+                        partitionID, tarimPrimaryKey.codecPrimaryValue(primaryKeyValues),
+                        typeInfo, node.host, node.port, tarimDbAdapt);
+
+                return env.addSource(testFun, "testFun", typeInfo);
+
             }else{
                 metaClient = new TarimMetaClient("127.0.0.1", 1301);
                 //todo, now the list for columns and partitionID are null
-                TarimProto.PrepareScanResponse result = metaClient.preScan(100, allPartitionFlag, serialize(contextBuilder.getFilters()), new ArrayList<>(), new ArrayList<>());
+                TarimProto.PrepareScanResponse result = metaClient.preScan(100, allPartitionFlag,
+                        serialize(contextBuilder.getFilters()), new ArrayList<>(), new ArrayList<>());
                 if (result.getCode() != 0){
                     throw new RuntimeException("the result of preScan is incorrect!!");
                 }
@@ -324,4 +387,9 @@ public class TarimSource {
         return !TarimScanContext.builder().fromProperties(properties).build().isStreaming();
     }
 
+    static String getPartitionID(ConnectorTarimTable table, String partitionStr){
+        return String.format("%s=%s"
+                ,table.getPartitionKey().get(0)
+                ,partitionStr);
+    }
 }

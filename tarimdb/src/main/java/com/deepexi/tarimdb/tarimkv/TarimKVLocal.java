@@ -139,7 +139,10 @@ public class TarimKVLocal {
         String cfName = Integer.toString(request.getTableID());
         Slot slot = getSlot(request.getChunkID());
         ColumnFamilyHandle cfh = slot.getColumnFamilyHandle(cfName);
-        //todo check cfh
+
+        if (cfh == null){
+            return null;
+        }
         List<String> internalKeys = new ArrayList<>();
         for(String key : request.getKeysList())
         {

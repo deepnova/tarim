@@ -21,11 +21,9 @@ import org.apache.iceberg.flink.TableLoader;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.deepexi.ConnectorTarimTable;
+import org.deepexi.FlinkSqlPrimaryKey;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public class TarimTableSource implements ScanTableSource, SupportsProjectionPushDown, SupportsFilterPushDown, SupportsLimitPushDown {
     private final int[] projectedFields;
@@ -41,8 +39,12 @@ public class TarimTableSource implements ScanTableSource, SupportsProjectionPush
     private Table tarimTable;
 
     private boolean otherFilter = false;
+    private boolean partitionEqFilter = false;
     private boolean partitionKeyFilter = false;
     private boolean primaryKeyFilter = false;
+
+    private Set<String> partitionKeys;
+    private Set<FlinkSqlPrimaryKey> primaryKeys;
 
     private TarimTableSource(TarimTableSource toCopy) {
         this.tarimTable = toCopy.tarimTable;
@@ -87,6 +89,18 @@ public class TarimTableSource implements ScanTableSource, SupportsProjectionPush
         this.otherFilter = otherFilter;
     }
 
+    public void setPartitionEqFilter(boolean partitionEqFilter){
+        this.partitionEqFilter = partitionEqFilter;
+    }
+
+    public void setPartitionKeys(Set<String> partitionKeys){
+        this.partitionKeys = partitionKeys;
+    }
+
+    public void setPrimaryKeys(Set<FlinkSqlPrimaryKey> primaryKeys){
+        this.primaryKeys = primaryKeys;
+    }
+
     private DataStream<RowData> createDataStream(StreamExecutionEnvironment execEnv) {
         return TarimSource.forRowData()
                 .env(execEnv)
@@ -96,6 +110,9 @@ public class TarimTableSource implements ScanTableSource, SupportsProjectionPush
                 .otherFilter(otherFilter)
                 .primaryKeyFilter(primaryKeyFilter)
                 .partitionKeyFilter(partitionKeyFilter)
+                .partitionEqFilter(partitionEqFilter)
+                .partitionKey(partitionKeys)
+                .primaryKey(primaryKeys)
                 //.project(getProjectedSchema())
                //.limit(limit)
                 .filters(filters)
@@ -154,10 +171,13 @@ public class TarimTableSource implements ScanTableSource, SupportsProjectionPush
             if (TarimFlinkFilters.partitionFilter){
                 setPartitionKeyFilter(true);
             }
+            if (TarimFlinkFilters.partitionEqFilter){
+                setPartitionEqFilter(true);
+            }
 
-            TarimFlinkFilters.otherFilter = false;
-            TarimFlinkFilters.primaryKeyFilter = false;
-            TarimFlinkFilters.partitionFilter = false;
+            //TarimFlinkFilters.otherFilter = false;
+            //TarimFlinkFilters.primaryKeyFilter = false;
+            //TarimFlinkFilters.partitionFilter = false;
 
             Optional<Expression> icebergExpression = FlinkFilters.convert(resolvedExpression);
             if (icebergExpression.isPresent()) {
@@ -165,6 +185,9 @@ public class TarimTableSource implements ScanTableSource, SupportsProjectionPush
                 acceptedFilters.add(resolvedExpression);
             }
         }
+
+        setPartitionKeys(TarimFlinkFilters.partitionValues);
+        setPrimaryKeys(TarimFlinkFilters.flinkSqlPrimaryKeys);
 
         this.filters = expressions;
         return Result.of(acceptedFilters, flinkFilters);

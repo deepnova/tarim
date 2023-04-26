@@ -16,6 +16,7 @@ import org.apache.iceberg.Table;
 import org.deepexi.source.DeltaData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.Tuple2;
 
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
@@ -72,6 +73,38 @@ public class TarimDbAdapt implements Serializable {
         logger.info("send getLastommittedCheckpointId to trimDB");
         return -1L;
     }
+
+    public Tuple2<RowData, Integer> lookupData(int tableID, RowType rowType, String schemaJson,
+                                                 String partitionID, String primaryValue, String host, int port){
+        logger.info("lookupData to tarimDB");
+
+        TarimDbClient client = new TarimDbClient(host, port);
+        TarimProto.LookupResponse response = client.lookupRequest(tableID, partitionID, primaryValue);
+        if (response.getCode() != 0){
+            return new Tuple2(null, 1);
+        }
+
+        AvroToRowDataConverters.AvroToRowDataConverter converter = createRowConverter(rowType);
+
+        org.apache.avro.Schema schema = new org.apache.avro.Schema.Parser().parse(schemaJson);
+        GenericDatumReader<GenericRecord> reader = new GenericDatumReader<>();
+        reader.setSchema(schema);
+
+        ByteArrayInputStream bytesIS = new ByteArrayInputStream(response.getRecord().toByteArray());
+        BinaryDecoder decoder = new DecoderFactory().directBinaryDecoder(bytesIS, null);
+        GenericRecord datum = null;
+
+        try {
+            datum = reader.read(null, decoder);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        RowData rowData = (RowData)converter.convert(datum);
+
+        return new Tuple2(rowData, response.getCode());
+    }
+
     public DeltaRecords getDeltaData(int tableID, RowType rowType, String partitionID, String schemaJson, long handle, String host, int port, String planID,
                                         int scanSize, String lowerBound, String upperBound, int lowerBoundType, int upperBoundType) throws InterruptedException {
 

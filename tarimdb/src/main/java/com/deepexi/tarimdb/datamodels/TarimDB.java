@@ -206,4 +206,38 @@ public class TarimDB extends AbstractDataModel {
 
         return respBuilder.build();
     }
+
+    public TarimProto.LookupResponse lookupMsgProc(int tableID, String partitionID, String primaryKey){
+        TarimKVProto.GetRequest.Builder getBuilder = TarimKVProto.GetRequest.newBuilder();
+        List<String> keys = new ArrayList<>();
+
+        keys.add(primaryKey);
+        TarimKVProto.GetRequest request = getBuilder.setTableID(tableID)
+                .setChunkID(toChunkID(partitionID))
+                .addAllKeys(keys)
+                .build();
+
+
+        TarimProto.LookupResponse.Builder respBuilder = TarimProto.LookupResponse.newBuilder();
+
+        TarimKVClient client = getTarimKVClient();
+
+        try {
+            List<byte[]> result = client.get(request);
+            if (result.get(0) == null){
+                return respBuilder.setCode(1)
+                        .setMsg("error")
+                        .build();
+            }else{
+                return respBuilder.setCode(0)
+                        .setMsg("ok")
+                        .setRecord(ByteString.copyFrom(result.get(0)))
+                        .build();
+            }
+        } catch (TarimKVException e) {
+        }
+        return respBuilder.setCode(1)
+                .setMsg("error")
+                .build();
+    }
 }

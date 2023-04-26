@@ -69,8 +69,9 @@ public class KeyValueCodec
                                           ,chunkID
                                           ,KeyValueCodec.KEY_SEPARATOR
                                           ,key);
+
         logger.debug("KeyEncode(), chunkID: " + chunkID 
-                  + ", key: " + key + ", internalKey: " + internalKey);
+                  + ", key: " + Arrays.toString(key.getBytes()) + ", internalKey: " + internalKey);
         return internalKey;
     }
 

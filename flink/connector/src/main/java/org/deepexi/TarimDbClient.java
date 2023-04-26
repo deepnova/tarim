@@ -53,4 +53,15 @@ public class TarimDbClient {
         TarimProto.ScanResponse response = blockingStub.scan(request);
         return response;
     }
+
+    public TarimProto.LookupResponse lookupRequest(int tableID, String partitionID, String primaryValue){
+        TarimProto.LookupRequest request = TarimProto.LookupRequest.newBuilder()
+                .setTableID(tableID)
+                .setPartitionID(partitionID)
+                .setPrimaryKey(primaryValue)
+                .build();
+
+        TarimProto.LookupResponse response = blockingStub.lookup(request);
+        return response;
+    }
 }

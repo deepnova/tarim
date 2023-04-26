@@ -5,11 +5,13 @@ import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.expressions.Expression;
+import org.deepexi.FlinkSqlPrimaryKey;
 
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.apache.iceberg.TableProperties.DEFAULT_NAME_MAPPING;
 
@@ -238,17 +240,38 @@ public class TarimScanContext implements Serializable {
         private boolean partitionKeyFilter;
         private boolean primaryKeyFilter;
         private boolean otherFilter;
+
+        private boolean partitionEqFilter;
+
+        public Set<String> partitionKeys;
+        public Set<FlinkSqlPrimaryKey> primaryKeys;
+
         private Builder() {
         }
         Builder partitionKeyFilter(boolean partitionKeyFilter) {
             this.partitionKeyFilter = partitionKeyFilter;
             return this;
         }
+
+        Builder partitionEqFilter(boolean partitionEqFilter) {
+            this.partitionEqFilter = partitionEqFilter;
+            return this;
+        }
+
         Builder primaryKeyFilter(boolean primaryKeyFilter) {
             this.primaryKeyFilter = primaryKeyFilter;
             return this;
         }
 
+        Builder partitionKey(Set<String> partitionKeys) {
+            this.partitionKeys = partitionKeys;
+            return this;
+        }
+
+        Builder primaryKey(Set<FlinkSqlPrimaryKey> primaryKeys) {
+            this.primaryKeys = primaryKeys;
+            return this;
+        }
         Builder otherFilter(boolean otherFilter) {
             this.otherFilter = otherFilter;
             return this;
@@ -373,6 +396,9 @@ public class TarimScanContext implements Serializable {
 
         public boolean getOtherFilter(){
             return otherFilter;
+        }
+        public boolean getPartitionEqFilter(){
+            return partitionEqFilter;
         }
     }
 }
