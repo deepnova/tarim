@@ -25,8 +25,8 @@ message GetTableResponse {
     // reuse avro schema declaration: 
     //   https://avro.apache.org/docs/1.11.1/specification/#schema-declaration
     string table = 4;
-    string primaryKey = 5; // clumn name of table
-    repeated string paritionKeys = 6;
+    repeated string primaryKeys = 5; // clumn name of table
+    repeated string partitionKeys = 6;
     map<string, string> properties = 7;
     string comment = 8;
     PartitionSpec partitionSpec = 9;
@@ -44,18 +44,27 @@ message Fields {
     int32 filedID = 4;
 }
 
+message InsertRequestWithPk {
+    int32 tableID = 1;
+    string partitionID = 2;
+    // reuse avro data serialization: 
+    //   https://avro.apache.org/docs/1.11.1/specification/#data-serialization-and-deserialization
+    bytes records = 3;
+    repeated string primaryKeys = 4; //pk values
+}
+
 message InsertRequest {
     int32 tableID = 1;
-    string partitoinID = 2;
+    string partitionID = 2;
     string primaryKey = 3; // clumn name of table
-    // reuse avro data serialization: 
+    // reuse avro data serialization:
     //   https://avro.apache.org/docs/1.11.1/specification/#data-serialization-and-deserialization
     bytes records = 4;
 }
 
 message LookupRequest {
     int32 tableID = 1;
-    string partitoinID = 2;
+    string partitionID = 2;
     string primaryKey = 3; //TODO: different data types
 }
 
@@ -65,13 +74,28 @@ message LookupResponse {
     bytes record = 3;
 }
 
+message FileInfo{
+    string path = 1;
+    string format = 2;
+    int32 sizeInBytes = 3;
+    map<int32, bytes> lowerBounds = 4;
+    map<int32, bytes> upperBounds = 5;
+    repeated int64 offsets = 6;
+    int64 rowCount = 7;
+}
+
 message Partition {
     string partitionID = 1;
     int64 scanHandler = 2;
     // only implement 'client_merge' policy first
     int32 mergePolicy = 3; // 0：none_merge, 1：client_merge, 2：server_merge
-    repeated string mainPaths = 4;
+    repeated FileInfo fileInfo = 4;
+    string host = 5;
+    int32 port = 6;
+    string partitionLowerBound = 7;
+    string partitionUpperBound = 8;
 }
+
 message MainAccount {
     int32 accountType = 1; // 1：S3, 2：HDFS
     string username = 2;
@@ -85,7 +109,13 @@ message ScanInfo {
 
 message PrepareScanRequest {
     int32 tableID = 1;
-    repeated Executor executors = 2;
+    bool allPartition = 2;
+    repeated Executor executors = 3;
+}
+
+message PrepareMetaNodeScanRequest {
+    int32 tableID = 1;
+    repeated string partitionID = 2;
 }
 
 message PrepareScanResponse {
@@ -94,22 +124,45 @@ message PrepareScanResponse {
     ScanInfo scanInfo = 3;
 }
 
+
 message ScanRequest {
-    string partitionID = 1;
-    int64 scanHandler = 2;
+    int32 tableID = 1;
+    string partitionID = 2;
+    int64 scanHandler = 3;
+    int32 scanSize = 4;
+    int64 snapshotID = 5;
+    string planID = 6;   //flinkJob+tableID+PartitionID+planID for identifier
+    string lower_bound = 7;
+    string upper_bound = 8;
+    int32 lower_bound_type = 9; //0 for NEGATIVE_INFINITY, 1 for exclusive'(', 2 for inclusive'['
+    int32 upper_bound_type = 10; //0 for POSITIVE_INFINITY, 1 for exclusive')', 2 for inclusive']'
     //TODO: more
+}
+
+message ScanRecord{
+    int32 op = 1; //1 for insert, 2 for delete
+    bytes records = 2;
 }
 
 message ScanResponse {
     int32 code = 1;
     string msg = 2;
-    bytes records = 3; // new and updated records, serialized in avro
-    bytes deleteRecords = 4; // delete records, serialized in avro
+    //bytes records = 3; // new and updated records, serialized in avro
+    //bytes deleteRecords = 4; // delete records, serialized in avro
+    repeated ScanRecord scanRecords = 3;
+    bool dataEnd = 4;
+}
+
+message PartitionRequest{
+    int32 tableID = 1;
+    string partitionID = 2;
 }
 
 service TarimMeta {
 
     rpc getTable(GetTableRequest) returns (GetTableResponse);
+
+    rpc setPartition(PartitionRequest) returns (DbStatusResponse);
 
     // call: client -> TarimMeta::prepareScan -> TarimDB::prepareScan
     rpc prepareScan(PrepareScanRequest) returns (PrepareScanResponse);
@@ -119,11 +172,13 @@ service Tarim {
 
     rpc insert(InsertRequest) returns (DbStatusResponse);
 
+    rpc insertWithPk(InsertRequestWithPk) returns (DbStatusResponse);
+
     rpc lookup(LookupRequest) returns (LookupResponse);
 
     //rpc delete(DeleteRequest) returns (DeleteResponse); //TODO
 
-    rpc prepareScan(PrepareScanRequest) returns (PrepareScanResponse);
+    rpc prepareScan(PrepareMetaNodeScanRequest) returns (PrepareScanResponse);
 
     rpc scan(ScanRequest) returns (ScanResponse);
 }

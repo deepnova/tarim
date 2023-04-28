@@ -27,7 +27,7 @@ import java.util.Set;
 public class FlinkTarimDynamicTableFactory implements DynamicTableSinkFactory, DynamicTableSourceFactory {
 
     static final String FACTORY_IDENTIFIER = "tarim";
-    public Table table;
+    public Table tarimTable;
 
     public FlinkTarimDynamicTableFactory(FlinkTarimCatalog catalog) {
         this.catalog = catalog;
@@ -76,20 +76,23 @@ public class FlinkTarimDynamicTableFactory implements DynamicTableSinkFactory, D
 
        // TableLoader tableLoader;
         if (catalog != null) {
-            //table = catalog.getCatalog().loadTable(catalog.toIdentifier(objectPath));
             //fix the config first
+            //todo, the table loader is for iceberg table, use the table read iceberg files during MOR
+            //the table from the loader is the iceberg table ,not tarim table
             String CATALOG_NAME = "hadoop_catalog";
             String DATABASE_NAME = "default_db";
             Map<String, String> properties = new HashMap<>();
             properties.put("warehouse", "hdfs://10.201.0.82:9000/wpf0220");
             properties.put("format-version", "2");
             CatalogLoader loader = CatalogLoader.hadoop(CATALOG_NAME, new Configuration(), properties);
-            ObjectPath tablePath = new ObjectPath(DATABASE_NAME, "new_table9");
+            ObjectPath tablePath = new ObjectPath(DATABASE_NAME, "new_table15");
 
             TableLoader tableLoader = TableLoader.fromCatalog(loader, TableIdentifier.of(Namespace.of(tablePath.getDatabaseName()), tablePath.getObjectName()));
-            tableLoader.open();
 
-            return new TarimTableSource(tableLoader, tableSchema, tableProps, context.getConfiguration());
+            //this table is for tarim table
+            tarimTable = catalog.getCatalog().loadTable(catalog.toIdentifier(objectPath));
+
+            return new TarimTableSource(tarimTable, tableLoader, tableSchema, tableProps, context.getConfiguration());
 
         } else {
             //todo

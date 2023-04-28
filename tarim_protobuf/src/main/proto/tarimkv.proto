@@ -46,11 +46,6 @@ message RGroupItem {
     repeated Slot slots = 3;
 }
 
-message Chunk {
-    int32 tableID = 1;
-    int64 chunkID = 2;
-}
-
 message KeyValue {
     string key = 2;
     string value = 3;
@@ -64,7 +59,7 @@ message KeyValueByte {
 message KeyValueOp {
     int32 op = 1; // 1: new, 2: delete
     string key = 2;
-    string value = 3;
+    bytes value = 3;
 }
 
 message DistributionInfo {
@@ -88,7 +83,7 @@ message DataDistributionResponse {
 
 message PutRequest {
     int32 tableID = 1;
-    int64 chunkID = 2;
+    int64  chunkID = 2;
     repeated KeyValueByte values = 3;
 }
 
@@ -98,17 +93,26 @@ message GetRequest {
     repeated string keys = 3;
 }
 
-message GetReponse {
+message RangeData{
+    repeated KeyValueOp values = 1;
+    bool dataEnd = 2;
+}
+message GetResponse {
     StatusResponse status = 1;
-    repeated KeyValueOp values = 2;
+    RangeData records = 2;
 }
 
 message PrefixSeekRequest {
     int32 tableID = 1;
     int64 chunkID = 2;
     string prefix = 3;
-    //int32 scanSize = 4; // 0: unlimited
-    //int32 snapshotID; // unspported, Temp: get all one-time
+    int32 scanSize = 4; // 0: unlimited
+    int64 snapshotID = 5;
+    string planID = 6;   //flinkJob+tableID+PartitionID+planID for identifier
+    string lower_bound = 7;
+    string upper_bound = 8;
+    int32 lower_bound_type = 9; //0 for NEGATIVE_INFINITY, 1 for exclusive, 2 for inclusive
+    int32 upper_bound_type = 10; //0 for POSITIVE_INFINITY, 1 for exclusive, 2 for inclusive
     //string lastKey;   // unspported, Temp: get all one-time
 }
 
@@ -118,13 +122,31 @@ message DeleteRequest {
     string key = 3;
 }
 
+message PrepareKVScanRequest {
+    int32 tableID = 1;
+    repeated int64 chunkIDs = 2;
+}
+
+message PrepareKVResponse {
+    int32 code = 1;
+    string msg = 2;
+    repeated Chunk chunks = 3;
+}
+message Chunk {
+    int64 chunkIDs = 1;
+    int64 scanHandler = 2;
+    // only implement 'client_merge' policy first
+    int32 mergePolicy = 3; // 0：none_merge, 1：client_merge, 2：server_merge
+    repeated string mainPaths = 4;
+}
 service TarimKVMeta {
     rpc getDataDistribution(DataDistributionRequest) returns (DataDistributionResponse);
 }
 
 service TarimKV { // for DB metadata
     rpc put(PutRequest) returns (StatusResponse);
-    rpc get(GetRequest) returns (GetReponse);
-    rpc prefixSeek(PrefixSeekRequest) returns (GetReponse);
+    rpc get(GetRequest) returns (GetResponse);
+    rpc prefixSeek(PrefixSeekRequest) returns (GetResponse);
     rpc delete(DeleteRequest) returns (StatusResponse);
+    rpc preScan(PrepareKVScanRequest) returns (PrepareKVResponse);
 }

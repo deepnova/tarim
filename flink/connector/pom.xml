@@ -135,6 +135,12 @@
             <version>3.21.1</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.iceberg</groupId>
+            <artifactId>iceberg-flink</artifactId>
+            <version>0.14.0</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
     <repositories>

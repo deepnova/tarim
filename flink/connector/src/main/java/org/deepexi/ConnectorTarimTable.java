@@ -6,6 +6,7 @@ import org.apache.iceberg.*;
 import org.apache.iceberg.encryption.EncryptionManager;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.LocationProvider;
+import org.deepexi.source.ScanPartition;
 
 import java.io.Serializable;
 import java.util.List;
@@ -21,15 +22,17 @@ public class ConnectorTarimTable implements Table, Serializable {
     private PartitionSpec partitionSpec;
     private Schema schema;
     private String schemaJson;
-    private String primaryKey;
+    private TarimPrimaryKey primaryKey;
 
     public TarimMetaClient metaClient;
+
+    private List<ScanPartition> scanList;
 
     public ConnectorTarimTable(String name){
         this.name = name;
     }
 
-    public ConnectorTarimTable(String name, int tableId, TableSchema flinkSchema, List<String> partitionKey, PartitionSpec partitionSpec, Schema schema, String schemaJson, String primaryKey){
+    public ConnectorTarimTable(String name, int tableId, TableSchema flinkSchema, List<String> partitionKey, PartitionSpec partitionSpec, Schema schema, String schemaJson, TarimPrimaryKey tarimPrimaryKey){
         this.name = name;
         this.tableId = tableId;
         this.flinkSchema = flinkSchema;
@@ -37,7 +40,7 @@ public class ConnectorTarimTable implements Table, Serializable {
         this.partitionSpec = partitionSpec;
         this.schema = schema;
         this.schemaJson = schemaJson;
-        this.primaryKey = primaryKey;
+        this.primaryKey = tarimPrimaryKey;
     }
 
     public void setMetaClient(TarimMetaClient metaClient){
@@ -62,10 +65,17 @@ public class ConnectorTarimTable implements Table, Serializable {
         return partitionKey;
     }
 
-    public String getPrimaryKey(){
+    public TarimPrimaryKey getPrimaryKey(){
         return primaryKey;
     }
 
+    public void setScanList(List<ScanPartition> list){
+        this.scanList = list;
+    }
+
+    public List<ScanPartition> getScanList(){
+        return this.scanList;
+    }
     @Override
     public void refresh() {
 

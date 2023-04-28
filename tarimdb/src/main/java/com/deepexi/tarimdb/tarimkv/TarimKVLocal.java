@@ -140,6 +140,9 @@ public class TarimKVLocal {
         Slot slot = getSlot(request.getChunkID());
         ColumnFamilyHandle cfh = slot.getColumnFamilyHandle(cfName);
 
+        if (cfh == null){
+            return null;
+        }
         List<String> internalKeys = new ArrayList<>();
         for(String key : request.getKeysList())
         {
@@ -172,6 +175,7 @@ public class TarimKVLocal {
         Slot slot = getSlot(request.getChunkID());
         ColumnFamilyHandle cfh = slot.getColumnFamilyHandle(cfName);
 
+        //todo check cfh
         String key = KeyValueCodec.KeyEncode(request.getChunkID(), request.getKey());
         logger.info("delete(), internal key: " + key);
         WriteOptions writeOpt = new WriteOptions();
@@ -227,6 +231,8 @@ public class TarimKVLocal {
         {
             Slot slot = getSlot(chunks[i]);
             ColumnFamilyHandle cfh = slot.getColumnFamilyHandle(cfName);
+            //todo check cfh
+
             KVSchema.ChunkDetail chunkDetail = new KVSchema.ChunkDetail();
             chunkDetail.chunkID = chunks[i];
             // get current snapshot, and keep it in memory until scan stop
@@ -266,7 +272,7 @@ public class TarimKVLocal {
     }
 
     // ifComplete is output parameter, scan not complete until ifComplete == true.
-    public List<TarimKVProto.KeyValueOp> deltaChunkScan(KVSchema.DeltaScanParam param, boolean ifComplete)
+    public TarimKVProto.RangeData deltaChunkScan(KVSchema.DeltaScanParam param, boolean ifComplete)
             throws RocksDBException, TarimKVException
     {
         //TODO: support lastKey and scanSize for full scan
@@ -276,9 +282,20 @@ public class TarimKVLocal {
         String cfName = Integer.toString(param.tableID);
         Slot slot = getSlot(param.chunkID);
         ColumnFamilyHandle cfh = slot.getColumnFamilyHandle(cfName);
+        if (cfh == null){
+            return TarimKVProto.RangeData.newBuilder()
+                    .setDataEnd(true)
+                    .addAllValues(new ArrayList())
+                    .build();
+        }
+
         String startKey = KeyValueCodec.ChunkOnlyKeyPrefixEncode(param.chunkID);
         ReadOptions readOpts = new ReadOptions();
-        List<TarimKVProto.KeyValueOp> results = slot.deltaScan(readOpts, cfh, param.scanHandler, startKey);
+        String lowerBoundKey = KeyValueCodec.KeyPrefixEncode(param.chunkID, param.lowerBound);
+        String upperBoundKey = KeyValueCodec.KeyPrefixEncode(param.chunkID, param.upperBound);
+
+        TarimKVProto.RangeData results = slot.deltaScan(readOpts, cfh, param.scanHandler, startKey, param.scanSize,
+                param.planID, lowerBoundKey, upperBoundKey, param.lowerBoundType, param.upperBoundType);
         return results;
     }
 

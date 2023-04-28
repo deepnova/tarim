@@ -1,10 +1,6 @@
 package com.deepexi.tarimdb.tarimkv;
 
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Set;
-import java.util.List;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.lang.StringBuilder;
 import java.lang.IllegalArgumentException;
@@ -32,9 +28,20 @@ public class Slot
     private Map<String, ColumnFamilyHandle> mapColumnFamilyHandles;
 
     private HandlerMap<RocksIterator> mapScanHandlers; //TODO: clear handlers which not be closed.
+    private Map<String, RocksIterator> mapToIter;
 
     public Slot(TarimKVProto.Slot slot){
         slotConfig = slot;
+    }
+
+    public void put(String key, String value){
+        logger.info("put operator, key = {}, value = {}", key ,value);
+
+        try {
+            db.put(key.getBytes(), value.getBytes());
+        } catch (RocksDBException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void open() throws Exception, RocksDBException, IllegalArgumentException {
@@ -70,6 +77,7 @@ public class Slot
         }
 
         mapScanHandlers = new HandlerMap<>();
+        mapToIter = new HashMap<>();
     }
 
     public RocksDB getDB(){
@@ -116,12 +124,6 @@ public class Slot
     {
         // TODO: WriteBatch and Iterator need lock ?
         ColumnFamilyHandle cfHandle = mapColumnFamilyHandles.get(cfName);
-        logger.info("CF handles: " + mapColumnFamilyHandlestoString(cfName));
-        if(cfHandle == null)
-        {
-            logger.error("not found ColumnFamilyHandle of column family: " + cfName);
-            throw new TarimKVException(Status.NULL_POINTER);
-        }
         return cfHandle;
     }
 
@@ -144,8 +146,12 @@ public class Slot
                   + ", slot id: " + getSlotID()
                   + ", key size: " + keyList.size()
                   + ", value size: " + values.size());
-        logger.info("multiGet(), keys: " + Common.BytesListToString(keyList)
-                  + ", values: " + Common.BytesListToString(values));
+        logger.info("multiGet()" + Common.BytesListToString(keyList));
+        for (byte[] value: values){
+            if (value != null){
+                logger.info("value:" + Arrays.toString(value));
+            }
+        }
         return values;
     }
 
@@ -198,6 +204,48 @@ public class Slot
         return results;
     }
 
+    public List<TarimKVProto.KeyValue>  prefixSeekForSchema(ReadOptions readOpts, ColumnFamilyHandle cfHandle, String keyPrefix) throws RocksDBException, TarimKVException
+    {
+        readOpts.setAutoPrefixMode(true);
+        RocksIterator iter = db.newIterator(cfHandle, readOpts);
+        iter.seek(keyPrefix.getBytes());
+
+        List<TarimKVProto.KeyValue> results = new ArrayList();
+
+        for (iter.seek(keyPrefix.getBytes());
+             iter.isValid() && Common.startWith(iter.key(), keyPrefix.getBytes());
+             iter.next())
+        {
+            iter.status();
+            if(iter.key() == null || iter.value() == null)
+            {
+                logger.error("prefixSeek(), iterator seek error, key or value is null, key: " + iter.key()
+                        + ", value: " + iter.value()
+                        + ", key prefix: " + keyPrefix);
+                continue; // TODO: throw exception if necessary in futrue.
+            }
+            String key = new String(iter.key());
+            byte[] value = iter.value();
+            KeyValueCodec kvc = KeyValueCodec.schemaKeyDecode(key, new String(value));
+            if(kvc == null){
+                logger.warn("prefixSeek() key not matched and ignore, result internal key: " + key
+                        + ", value: " + value
+                        + ", cfName: " + cfHandle.getName()
+                        + ", key prefix: " + keyPrefix);
+                continue;
+            }
+            logger.info("prefixSeek(), result internal key: " + key
+                    + ", value: " + value
+                    + ", chunkID: " + kvc.tableID
+                    + ", key: " + kvc.valueKV.getKey()
+                    + ", value: " + kvc.valueKV.getValue()
+                    + ", cfName: " + cfHandle.getName()
+                    + ", key prefix: " + keyPrefix);
+            results.add(kvc.valueKV);
+        }
+        return results;
+    }
+
     public long prepareScan(ColumnFamilyHandle cfHandle, String keyPrefix) 
     {
         ReadOptions scanOpts = new ReadOptions();
@@ -206,44 +254,134 @@ public class Slot
         return mapScanHandlers.put(it);
     }
 
-    public List<TarimKVProto.KeyValueOp> deltaScan(ReadOptions readOpts, 
+    boolean getIteratorFilter(int upperBoundType, String upperBound, byte[] iteratorKey, String starKey){
+
+        switch (upperBoundType) {
+            case 0:
+                return Common.startWith(iteratorKey, starKey.getBytes());
+            case 1:
+                return (new String(iteratorKey)).compareTo(upperBound) < 0;
+            case 2:
+                return (new String(iteratorKey)).compareTo(upperBound) <= 0;
+            default:
+                throw new RuntimeException("un support type!");
+        }
+    }
+
+    public TarimKVProto.RangeData deltaScan(ReadOptions readOpts,
                                                    ColumnFamilyHandle cfHandle, 
                                                    long scanHandler,
-                                                   String startKey) 
-             throws RocksDBException, TarimKVException
+                                                   String startKey,
+                                                   int scanSize,
+                                                   String planID,
+                                                   String lowerBound,
+                                                   String upperBound,
+                                                   int lowerBoundType,
+                                                   int upperBoundType) throws RocksDBException, TarimKVException
     {
         readOpts.setAutoPrefixMode(true);
         readOpts.setFillCache(false);
         readOpts.setPrefixSameAsStart(true);
         //readOpts.setIgnoreRangeDeletions(true); //TODO: may useful
-        RocksIterator iter = mapScanHandlers.get(scanHandler);
-        if(iter == null) throw new TarimKVException(Status.NULL_POINTER);
-        iter.seek(startKey.getBytes());
-
+        int totalSize = 0;
         List<TarimKVProto.KeyValueOp> results = new ArrayList();
+        KeyValueCodec kvc;
+        Boolean endFlag = false;
 
-        //TODO: control max size
-        for (iter.seek(startKey.getBytes()); 
-             iter.isValid() && Common.startWith(iter.key(), startKey.getBytes());
-             iter.next()) 
-        {
-            iter.status();
-            if(iter.key() == null || iter.value() == null)
-            {
-                logger.error("deltaScan(), iterator seek error, key or value is null, key: " + iter.key()
-                           + ", value: " + iter.value()
-                           + ", start key: " + startKey);
-                continue; // TODO: throw exception if necessary in futrue.
-            }
-            KeyValueCodec kvc = KeyValueCodec.OpKeyDecode(new String(iter.key()));
-            if(kvc == null){
-                logger.warn("deltaScan() key not matched and ignore, result internal key: " + iter.key() 
-                            + ", value: " + iter.value()
+
+        if (!mapToIter.containsKey(planID)) {
+            RocksIterator it = db.newIterator(cfHandle, readOpts);
+
+            mapToIter.put(planID, it);
+            //the first range in the scan
+            if (lowerBoundType == 0){
+                //NEGATIVE_INFINITY
+                for (it.seekToFirst();
+                     it.isValid()  && totalSize < scanSize;
+                     it.next()){
+                    it.status();
+                    if(it.key() == null || it.value() == null)
+                    {
+                        throw new RocksDBException("deltaScan the key is null!");
+                    }
+
+                    if (!getIteratorFilter(upperBoundType, upperBound, it.key(), startKey)){
+                        continue;
+                    }
+
+                    totalSize++;
+
+                    kvc = KeyValueCodec.OpKeyDecode(new String(it.key()), it.value());
+                    if(kvc == null){
+                        throw new RocksDBException("deltaScan the kvc is null!");
+                    }
+                    logger.info("deltaScan(), result internal key: " + it.key()
+                            + ", value: " + it.value()
+                            + ", chunkID: " + kvc.chunkID
+                            + ", op: " + kvc.valueOp.getOp()
+                            + ", key: " + kvc.valueOp.getKey()
+                            + ", value: " + kvc.valueOp.getValue()
                             + ", cfName: " + cfHandle.getName()
-                            + ", key prefix: " + startKey);
-                continue;
-            } 
-            logger.info("deltaScan(), result internal key: " + iter.key() 
+                            + ", start key: " + startKey);
+                    results.add(kvc.valueOp);
+                }
+            }else{
+                //NEGATIVE_INFINITY
+
+                for (it.seek(lowerBound.getBytes());
+                     it.isValid() && getIteratorFilter(upperBoundType, upperBound, it.key(), startKey) && totalSize < scanSize;
+                     it.next(), totalSize++){
+                    it.status();
+                    if(it.key() == null || it.value() == null)
+                    {
+                        throw new RocksDBException("deltaScan the key is null!");
+                    }
+
+                    if (lowerBound.equals(new String(it.key()))){
+                        //skip the first, because the range is (a,b]
+                        logger.info("the first key is skip" + it.key());
+                        continue;
+                    }
+
+                    kvc = KeyValueCodec.OpKeyDecode(new String(it.key()), it.value());
+                    if(kvc == null){
+                        throw new RocksDBException("deltaScan the kvc is null!");
+                    }
+                    logger.info("deltaScan(), result internal key: " + it.key()
+                            + ", value: " + it.value()
+                            + ", chunkID: " + kvc.chunkID
+                            + ", op: " + kvc.valueOp.getOp()
+                            + ", key: " + kvc.valueOp.getKey()
+                            + ", value: " + kvc.valueOp.getValue()
+                            + ", cfName: " + cfHandle.getName()
+                            + ", start key: " + startKey);
+                    results.add(kvc.valueOp);
+                }
+            }
+
+            if (!it.isValid() || !getIteratorFilter(upperBoundType, upperBound, it.key(), startKey)){
+                endFlag = true;
+                mapToIter.remove(planID);
+                it.close();
+            }
+
+        }else{
+            RocksIterator iter = mapToIter.get(planID);
+
+            if(iter == null) throw new TarimKVException(Status.NULL_POINTER);
+            for (; iter.isValid() && getIteratorFilter(upperBoundType, upperBound, iter.key(), startKey) && totalSize < scanSize;
+                 iter.next(), totalSize++){
+                iter.status();
+                if(iter.key() == null || iter.value() == null)
+                {
+                    throw new RocksDBException("deltaScan the key is null!");
+                }
+
+                kvc = KeyValueCodec.OpKeyDecode(new String(iter.key()), iter.value());
+                if(kvc == null){
+                    throw new RocksDBException("deltaScan the kvc is null!");
+                }
+                logger.info("deltaScan(), result internal key: " + iter.key()
                         + ", value: " + iter.value()
                         + ", chunkID: " + kvc.chunkID
                         + ", op: " + kvc.valueOp.getOp()
@@ -251,9 +389,19 @@ public class Slot
                         + ", value: " + kvc.valueOp.getValue()
                         + ", cfName: " + cfHandle.getName()
                         + ", start key: " + startKey);
-            results.add(kvc.valueOp);
+                results.add(kvc.valueOp);
+            }
+            if (!iter.isValid() || !getIteratorFilter(upperBoundType, upperBound, iter.key(), startKey)){
+                endFlag = true;
+                mapToIter.remove(planID);
+                iter.close();
+            }
         }
-        return results;
+
+        return TarimKVProto.RangeData.newBuilder()
+                .setDataEnd(endFlag)
+                .addAllValues(results)
+                .build();
     }
 
     public void releaseScanHandler(long scanHandler) 

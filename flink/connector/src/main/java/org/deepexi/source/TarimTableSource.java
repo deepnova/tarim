@@ -13,17 +13,22 @@ import org.apache.flink.table.connector.source.abilities.SupportsLimitPushDown;
 import org.apache.flink.table.connector.source.abilities.SupportsProjectionPushDown;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.expressions.ResolvedExpression;
+import org.apache.iceberg.Table;
 import org.apache.iceberg.expressions.Expression;
+import org.apache.iceberg.flink.FlinkFilters;
+import org.apache.iceberg.flink.IcebergTableSource;
 import org.apache.iceberg.flink.TableLoader;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
+import org.apache.iceberg.relocated.com.google.common.collect.Lists;
+import org.deepexi.ConnectorTarimTable;
+import org.deepexi.FlinkSqlPrimaryKey;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class TarimTableSource implements ScanTableSource, SupportsProjectionPushDown, SupportsFilterPushDown, SupportsLimitPushDown {
     private final int[] projectedFields;
     private final long limit;
-    private final List<Expression> filters;
+    private List<Expression> filters;
 
     private final TableLoader tableLoader;
     private final TableSchema schema;
@@ -31,7 +36,18 @@ public class TarimTableSource implements ScanTableSource, SupportsProjectionPush
     private final boolean isLimitPushDown;
     private final ReadableConfig readableConfig;
 
+    private Table tarimTable;
+
+    private boolean otherFilter = false;
+    private boolean partitionEqFilter = false;
+    private boolean partitionKeyFilter = false;
+    private boolean primaryKeyFilter = false;
+
+    private Set<Object> partitionKeys;
+    private Set<FlinkSqlPrimaryKey> primaryKeys;
+
     private TarimTableSource(TarimTableSource toCopy) {
+        this.tarimTable = toCopy.tarimTable;
         this.tableLoader = toCopy.tableLoader;
         this.schema = toCopy.schema;
         this.properties = toCopy.properties;
@@ -42,14 +58,15 @@ public class TarimTableSource implements ScanTableSource, SupportsProjectionPush
         this.readableConfig = toCopy.readableConfig;
     }
 
-    public TarimTableSource(TableLoader tableLoader, TableSchema schema, Map<String, String> properties,
+    public TarimTableSource(Table tarimTable, TableLoader tableLoader, TableSchema schema, Map<String, String> properties,
                             ReadableConfig readableConfig) {
-        this(tableLoader, schema, properties, null, false, -1, ImmutableList.of(), readableConfig);
+        this(tarimTable, tableLoader, schema, properties, null, false, -1, ImmutableList.of(), readableConfig);
     }
 
-    private TarimTableSource(TableLoader tableLoader, TableSchema schema, Map<String, String> properties,
+    private TarimTableSource(Table tarimTable, TableLoader tableLoader, TableSchema schema, Map<String, String> properties,
                                int[] projectedFields, boolean isLimitPushDown,
                                long limit, List<Expression> filters, ReadableConfig readableConfig) {
+        this.tarimTable = tarimTable;
         this.tableLoader = tableLoader;
         this.schema = schema;
         this.properties = properties;
@@ -60,14 +77,45 @@ public class TarimTableSource implements ScanTableSource, SupportsProjectionPush
         this.readableConfig = readableConfig;
     }
 
+    public void setPrimaryKeyFilter(boolean primaryKeyFilter) {
+        this.primaryKeyFilter = primaryKeyFilter;
+    }
+
+    public void setPartitionKeyFilter(boolean partitionKeyFilter){
+        this.partitionKeyFilter = partitionKeyFilter;
+    }
+
+    public void setOtherFilter(boolean otherFilter){
+        this.otherFilter = otherFilter;
+    }
+
+    public void setPartitionEqFilter(boolean partitionEqFilter){
+        this.partitionEqFilter = partitionEqFilter;
+    }
+
+    public void setPartitionKeys(Set<Object> partitionKeys){
+        this.partitionKeys = partitionKeys;
+    }
+
+    public void setPrimaryKeys(Set<FlinkSqlPrimaryKey> primaryKeys){
+        this.primaryKeys = primaryKeys;
+    }
+
     private DataStream<RowData> createDataStream(StreamExecutionEnvironment execEnv) {
         return TarimSource.forRowData()
                 .env(execEnv)
                 .tableLoader(tableLoader)
                 .properties(properties)
+                .table(tarimTable)
+                .otherFilter(otherFilter)
+                .primaryKeyFilter(primaryKeyFilter)
+                .partitionKeyFilter(partitionKeyFilter)
+                .partitionEqFilter(partitionEqFilter)
+                .partitionKey(partitionKeys)
+                .primaryKey(primaryKeys)
                 //.project(getProjectedSchema())
                //.limit(limit)
-               // .filters(filters)
+                .filters(filters)
                // .flinkConf(readableConfig)
                 .build();
     }
@@ -94,7 +142,7 @@ public class TarimTableSource implements ScanTableSource, SupportsProjectionPush
 
     @Override
     public DynamicTableSource copy() {
-        return null;
+        return new TarimTableSource(this);
     }
 
     @Override
@@ -103,8 +151,46 @@ public class TarimTableSource implements ScanTableSource, SupportsProjectionPush
     }
 
     @Override
-    public Result applyFilters(List<ResolvedExpression> list) {
-        return null;
+    public Result applyFilters(List<ResolvedExpression> flinkFilters) {
+        List<ResolvedExpression> acceptedFilters = Lists.newArrayList();
+        List<Expression> expressions = Lists.newArrayList();
+
+        List<String> partitionKeys = ((ConnectorTarimTable)tarimTable).getPartitionKey();
+        //todo the primaryKey maybe many
+        List<String> primaryKeys;
+        primaryKeys = ((ConnectorTarimTable)tarimTable).getPrimaryKey().getPrimaryKeys();
+
+        for (ResolvedExpression resolvedExpression : flinkFilters) {
+            TarimFlinkFilters.convert(resolvedExpression,partitionKeys, primaryKeys);
+            if (TarimFlinkFilters.otherFilter){
+                setOtherFilter(true);
+            }
+            if (TarimFlinkFilters.primaryKeyFilter){
+                setPrimaryKeyFilter(true);
+            }
+            if (TarimFlinkFilters.partitionFilter){
+                setPartitionKeyFilter(true);
+            }
+            if (TarimFlinkFilters.partitionEqFilter){
+                setPartitionEqFilter(true);
+            }
+
+            //TarimFlinkFilters.otherFilter = false;
+            //TarimFlinkFilters.primaryKeyFilter = false;
+            //TarimFlinkFilters.partitionFilter = false;
+
+            Optional<Expression> icebergExpression = FlinkFilters.convert(resolvedExpression);
+            if (icebergExpression.isPresent()) {
+                expressions.add(icebergExpression.get());
+                acceptedFilters.add(resolvedExpression);
+            }
+        }
+
+        setPartitionKeys(TarimFlinkFilters.partitionValues);
+        setPrimaryKeys(TarimFlinkFilters.flinkSqlPrimaryKeys);
+
+        this.filters = expressions;
+        return Result.of(acceptedFilters, flinkFilters);
     }
 
     @Override

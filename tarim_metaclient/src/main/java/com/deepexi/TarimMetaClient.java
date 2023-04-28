@@ -13,6 +13,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import org.apache.commons.codec.digest.MurmurHash3;
+
 public class TarimMetaClient implements Serializable {
     // TODO: not thread safety, need lock
 
@@ -205,6 +206,53 @@ public class TarimMetaClient implements Serializable {
                 .setTblName(tableName)
                 .build();
         TarimProto.GetTableResponse response = blockStub.getTable(request);
+        channel.shutdown();
+        return response;
+    }
+
+    public TarimProto.PrepareScanResponse preScan(int tableID, boolean allPartition, byte[] selections, List<String> columns, List<String> partitionIDs){
+        ManagedChannel channel;//客户端与服务器的通信channel
+        TarimMetaGrpc.TarimMetaBlockingStub blockStub;
+        channel = ManagedChannelBuilder.forAddress(metaHost, metaPort).usePlaintext().build();//指定grpc服务器地址和端口初始化通信channel
+        blockStub = TarimMetaGrpc.newBlockingStub(channel);//根据通信channel初始化客户端存根节点
+
+        TarimExecutor.Executor.Builder executorBuilder = TarimExecutor.Executor.newBuilder();
+        TarimExecutor.Selection selection = TarimExecutor.Selection.newBuilder().setConditions(ByteString.copyFrom(selections)).build();
+        TarimExecutor.PartitionTableScan scan = TarimExecutor.PartitionTableScan.newBuilder()
+                .setTableID(tableID)
+                .build();
+
+        TarimExecutor.Executor executor = executorBuilder
+                .setExecType(TarimExecutor.ExecType.TypePartitionTableScan)
+                .setSelection(selection)
+                .setPartitionScan(scan)
+                .build();
+
+        TarimProto.PrepareScanRequest request = TarimProto.PrepareScanRequest.newBuilder()
+                .setAllPartition(allPartition)
+                .setTableID(tableID)
+                .addExecutors(0, executor)
+                .build();
+
+        TarimProto.PrepareScanResponse response = blockStub.prepareScan(request);
+        channel.shutdown();
+        return response;
+
+    }
+
+    public TarimProto.DbStatusResponse partitionRequest(int tableID, String partitionID){
+        ManagedChannel channel;//客户端与服务器的通信channel
+        TarimMetaGrpc.TarimMetaBlockingStub blockStub;
+        channel = ManagedChannelBuilder.forAddress(metaHost, metaPort).usePlaintext().build();//指定grpc服务器地址和端口初始化通信channel
+        blockStub = TarimMetaGrpc.newBlockingStub(channel);//根据通信channel初始化客户端存根节点
+
+        TarimProto.PartitionRequest request = TarimProto.PartitionRequest.newBuilder()
+                .setTableID(tableID)
+                .setPartitionID(partitionID)
+                .build();
+
+        TarimProto.DbStatusResponse response = blockStub.setPartition(request);
+        channel.shutdown();
         return response;
     }
 }

@@ -1,4 +1,4 @@
-package com.deepexi.tarimdb.tarimkv;
+package tarimmeta;
 
 //import com.google.protobuf.ByteString;
 import io.grpc.stub.StreamObserver;
@@ -8,10 +8,7 @@ import org.apache.logging.log4j.Logger;
 import com.deepexi.rpc.TarimKVMetaGrpc;
 import com.deepexi.rpc.TarimKVProto.DataDistributionRequest;
 import com.deepexi.rpc.TarimKVProto.DataDistributionResponse;
-import com.deepexi.rpc.TarimKVProto.DistributionInfo;
 import com.deepexi.rpc.TarimKVProto.StatusResponse;
-import com.deepexi.tarimdb.util.BasicConfig;
-import com.deepexi.tarimdb.util.Status;
 
 /**
  * TarimKVMeta

@@ -39,7 +39,11 @@ public class TarimKVClient {
         this.lMetadata = lMetadata;
     }
 
-    public int init() throws Exception, IllegalArgumentException, TarimKVException 
+    public KVLocalMetadata getKVLocalMetadata(){
+        return this.lMetadata;
+    }
+
+    public int init() throws Exception
     {
         getKVMetadata();
         kvLocal = new TarimKVLocal(metaClient, lMetadata);
@@ -128,7 +132,7 @@ public class TarimKVClient {
         }
     }
 
-    public List<TarimKVProto.KeyValueOp> deltaChunkScan(KVSchema.DeltaScanParam param, boolean ifComplete)
+    public TarimKVProto.RangeData deltaChunkScan(KVSchema.DeltaScanParam param, boolean ifComplete)
               throws TarimKVException
     {
         //TODO: write local or remote rocksdb here if necessary
