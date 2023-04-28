@@ -25,8 +25,8 @@ message GetTableResponse {
     // reuse avro schema declaration: 
     //   https://avro.apache.org/docs/1.11.1/specification/#schema-declaration
     string table = 4;
-    string primaryKey = 5; // clumn name of table
-    repeated string paritionKeys = 6;
+    repeated string primaryKeys = 5; // clumn name of table
+    repeated string partitionKeys = 6;
     map<string, string> properties = 7;
     string comment = 8;
     PartitionSpec partitionSpec = 9;
@@ -44,11 +44,20 @@ message Fields {
     int32 filedID = 4;
 }
 
+message InsertRequestWithPk {
+    int32 tableID = 1;
+    string partitionID = 2;
+    // reuse avro data serialization: 
+    //   https://avro.apache.org/docs/1.11.1/specification/#data-serialization-and-deserialization
+    bytes records = 3;
+    repeated string primaryKeys = 4; //pk values
+}
+
 message InsertRequest {
     int32 tableID = 1;
-    string partitoinID = 2;
+    string partitionID = 2;
     string primaryKey = 3; // clumn name of table
-    // reuse avro data serialization: 
+    // reuse avro data serialization:
     //   https://avro.apache.org/docs/1.11.1/specification/#data-serialization-and-deserialization
     bytes records = 4;
 }
@@ -162,6 +171,8 @@ service TarimMeta {
 service Tarim {
 
     rpc insert(InsertRequest) returns (DbStatusResponse);
+
+    rpc insertWithPk(InsertRequestWithPk) returns (DbStatusResponse);
 
     rpc lookup(LookupRequest) returns (LookupResponse);
 

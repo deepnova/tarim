@@ -176,7 +176,11 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
         mainPkMin = tarimPrimaryKey.primaryData(wrapper.wrap(rowData));
         deltaPkMin = tarimPrimaryKey.primaryData(wrapper.wrap(deltaMinRowData.getData()));
 
-        int compare = comparePrimary(mainPkMin, deltaPkMin);
+        int compare = tarimPrimaryKey.comparePrimary(mainPkMin,
+                deltaPkMin,
+                context.project(),
+                identifierIdsList);
+
         if(compare < 0){
             setState(STATE_LEFT);
             setSubState(MergeSubState.SUB_STATE_RIGHT_NOT_COLLECT);
@@ -222,7 +226,11 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
         mainPkMin = tarimPrimaryKey.primaryData(wrapper.wrap(rowData));
         deltaPkMin = tarimPrimaryKey.primaryData(wrapper.wrap(deltaMinRowData.getData()));
 
-        int compare = comparePrimary(mainPkMin, deltaPkMin);
+        int compare = tarimPrimaryKey.comparePrimary(mainPkMin,
+                deltaPkMin,
+                context.project(),
+                identifierIdsList);
+
         if(compare < 0){
             setState(STATE_LEFT);
             setSubState(MergeSubState.SUB_STATE_RIGHT_NOT_COLLECT);
@@ -251,7 +259,11 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
         GenericRowData mainElement = (GenericRowData)iterator.next();
         mainPkMin = tarimPrimaryKey.primaryData(wrapper.wrap(mainElement));
 
-        int compare = comparePrimary(mainPkMin, deltaPkMin);
+        int compare = tarimPrimaryKey.comparePrimary(mainPkMin,
+                deltaPkMin,
+                context.project(),
+                identifierIdsList);
+
         if (compare < 0){
             return mainElement;
         }else if (compare > 0){
@@ -286,7 +298,11 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
         DeltaData deltaElement = deltaDataIterator.next();
 
         deltaPkMin = tarimPrimaryKey.primaryData(wrapper.wrap(deltaElement.getData()));
-        int compare = comparePrimary(mainPkMin, deltaPkMin);
+
+        int compare = tarimPrimaryKey.comparePrimary(mainPkMin,
+                deltaPkMin,
+                context.project(),
+                identifierIdsList);
 
         if(compare < 0){
             setState(STATE_LEFT);
@@ -464,60 +480,4 @@ public class TarimFlinkInputFormat  extends RichInputFormat<RowData, TarimFlinkI
         }
     }
 
-
-    private int comparePrimary(Object[] mainPkMin, Object[] deltaPkMin){
-
-        for (Integer id : identifierIdsList){
-            Type.TypeID type = context.project().findType(id).typeId();
-
-            int newID = id - 1;
-            switch(type){
-                case INTEGER:
-                    Integer mainKey = (Integer)mainPkMin[newID];
-                    Integer deltaKey = (Integer)deltaPkMin[newID];
-                    if (mainKey > deltaKey){
-                        return 1;
-                    }else if (mainKey < deltaKey){
-                        return -1;
-                    }else{
-                        //next key
-                        continue;
-                    }
-
-                case LONG:
-                    Long mainLongKey = (Long)mainPkMin[newID];
-                    Long deltaLongKey = (Long)deltaPkMin[newID];
-                    if (mainLongKey > deltaLongKey){
-                        return 1;
-                    }else if (mainLongKey < deltaLongKey){
-                        return -1;
-                    }else{
-                        //next key
-                        continue;
-                    }
-
-                case STRING:
-                    String mainStrKey = (String)mainPkMin[newID];
-                    String deltaStrKey = (String)deltaPkMin[newID];
-
-                    int result = mainStrKey.compareTo(deltaStrKey);
-                    if (result > 0){
-                        return 1;
-                    }else if (result < 0){
-                        return -1;
-                    }else{
-                        //next key
-                        continue;
-                    }
-
-                case DATE:
-                case TIME:
-                case TIMESTAMP:
-                default:
-                    throw new RuntimeException("un support Type !!");
-            }
-        }
-
-        return 0;
-    }
 }

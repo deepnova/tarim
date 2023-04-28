@@ -51,11 +51,71 @@ public class TarimDB extends AbstractDataModel {
         //TODO
         logger.info( "Do some work in TarimDB!" );
     }
+    public int insertWithPkMsgProc(int tableID, String partitionID, List<String> primaryKeys, byte[] records) {
+
+        TarimKVProto.PutRequest.Builder requestBuilder = TarimKVProto.PutRequest.newBuilder();
+        TarimKVProto.KeyValueByte.Builder kvBuilder = TarimKVProto.KeyValueByte.newBuilder();
+
+        requestBuilder.setChunkID(toChunkID(partitionID));
+        requestBuilder.setTableID(tableID);
+
+        ByteArrayInputStream bytesIS = new ByteArrayInputStream(records);
+        BinaryDecoder decoder = new DecoderFactory().directBinaryDecoder(bytesIS, null);
+        GenericDatumReader<GenericRecord> reader = new GenericDatumReader<>();
+        //todo schemaJson should be create from the metaNode
+        String schemaJson = Common.loadTableMeta("table2meta.json");
+        org.apache.avro.Schema schema = new org.apache.avro.Schema.Parser().parse(schemaJson);
+
+        reader.setSchema(schema);
+
+        ByteArrayOutputStream bytesOS = new ByteArrayOutputStream();
+        BinaryEncoder encoder = new EncoderFactory().directBinaryEncoder(bytesOS, null); // or binaryEncoder() to create BufferedBinaryEncoder
+        DatumWriter writer = new GenericDatumWriter(schema);
+        int readSize = 0;
+        int index = 0;
+        while(true)
+        {
+            try {
+                GenericRecord datum = reader.read(null, decoder);
+                if(datum == null) break;
+                //todo we will support to add some hidden schema, so we have to decode the data
+
+                writer.write(datum, encoder);
+
+                readSize++;
+                //Schema test = datum.getSchema();
+                kvBuilder.setKey(primaryKeys.get(index));
+                kvBuilder.setValue(ByteString.copyFrom(bytesOS.toByteArray()));
+                requestBuilder.addValues(index, kvBuilder.build());
+                bytesOS.reset();
+                index++;
+                logger.info(readSize + ": " + datum.get("userID") + ", " + datum.get("age") + ", " + datum.get("class")
+                        + ". Datum: " + datum.toString());
+
+            }catch(EOFException e){
+                logger.info("read datum complete.");
+                break;
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        TarimKVProto.PutRequest request = requestBuilder.build();
+
+        try{
+            getTarimKVClient().put(request);
+        }catch (TarimKVException e){
+            logger.error("put data err!");
+            return 1;
+        }
+
+        return 0;
+    }
 
     public int insertMsgProc(int tableID, String partitionID, String primaryKey, byte[] records) {
 
         TarimKVProto.PutRequest.Builder requestBuilder = TarimKVProto.PutRequest.newBuilder();
-        TarimKVProto.KeyValueByte.Builder kvBuiler = TarimKVProto.KeyValueByte.newBuilder();
+        TarimKVProto.KeyValueByte.Builder kvBuilder = TarimKVProto.KeyValueByte.newBuilder();
 
         requestBuilder.setChunkID(toChunkID(partitionID));
         requestBuilder.setTableID(tableID);
@@ -85,9 +145,9 @@ public class TarimDB extends AbstractDataModel {
 
                 readSize++;
                 Schema test = datum.getSchema();
-                kvBuiler.setKey(datum.get(primaryKey).toString());
-                kvBuiler.setValue(ByteString.copyFrom(bytesOS.toByteArray()));
-                requestBuilder.addValues(index, kvBuiler.build());
+                kvBuilder.setKey(datum.get(primaryKey).toString());
+                kvBuilder.setValue(ByteString.copyFrom(bytesOS.toByteArray()));
+                requestBuilder.addValues(index, kvBuilder.build());
                 bytesOS.reset();
                 index++;
                 logger.info(readSize + ": " + datum.get("userID") + ", " + datum.get("age") + ", " + datum.get("class")
@@ -175,8 +235,8 @@ public class TarimDB extends AbstractDataModel {
         //the op all are 1 now
 
         //todo schemaJson should be create from the metaNode
-        String schemaJson = Common.loadTableMeta("tablemeta.json");
-        org.apache.avro.Schema schema = new org.apache.avro.Schema.Parser().parse(schemaJson);
+        //String schemaJson = Common.loadTableMeta("tablemeta.json");
+        //org.apache.avro.Schema schema = new org.apache.avro.Schema.Parser().parse(schemaJson);
 
         TarimProto.ScanResponse.Builder respBuilder = TarimProto.ScanResponse.newBuilder();
         List<TarimProto.ScanRecord> scanRecords = new ArrayList<>();

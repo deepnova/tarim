@@ -243,8 +243,8 @@ public class TarimScanContext implements Serializable {
 
         private boolean partitionEqFilter;
 
-        public Set<String> partitionKeys;
-        public Set<FlinkSqlPrimaryKey> primaryKeys;
+        private Set<Object> partitionKeys;
+        private Set<FlinkSqlPrimaryKey> primaryKeys;
 
         private Builder() {
         }
@@ -263,7 +263,7 @@ public class TarimScanContext implements Serializable {
             return this;
         }
 
-        Builder partitionKey(Set<String> partitionKeys) {
+        Builder partitionKey(Set<Object> partitionKeys) {
             this.partitionKeys = partitionKeys;
             return this;
         }
@@ -276,6 +276,7 @@ public class TarimScanContext implements Serializable {
             this.otherFilter = otherFilter;
             return this;
         }
+
         Builder caseSensitive(boolean newCaseSensitive) {
             this.caseSensitive = newCaseSensitive;
             return this;
@@ -399,6 +400,14 @@ public class TarimScanContext implements Serializable {
         }
         public boolean getPartitionEqFilter(){
             return partitionEqFilter;
+        }
+
+        public Set<Object> getPartitionKeys(){
+            return this.partitionKeys;
+        }
+
+        public Set<FlinkSqlPrimaryKey> getPrimaryKeys(){
+            return this.primaryKeys;
         }
     }
 }

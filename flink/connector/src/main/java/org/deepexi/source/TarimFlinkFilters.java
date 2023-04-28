@@ -33,11 +33,11 @@ public class TarimFlinkFilters {
     public static boolean partitionEqFilter = false;
     public static boolean primaryKeyFilter = false;
     public static boolean otherFilter = false;
-    public static HashSet<String> partitionValues = new HashSet<>();
+    public static HashSet<Object> partitionValues = new HashSet<>();
     public static HashSet<FlinkSqlPrimaryKey> flinkSqlPrimaryKeys = new HashSet<>();
     private static final Pattern STARTS_WITH_PATTERN = Pattern.compile("([^%]+)%");
 
-    private static FilterStatus status = FilterStatus.STATUS_ADD;
+    private static FilterStatus status = FilterStatus.STATUS_INIT;
 
     private static final Map<FunctionDefinition, Expression.Operation> FILTERS = ImmutableMap
             .<FunctionDefinition, Expression.Operation>builder()
@@ -120,7 +120,6 @@ public class TarimFlinkFilters {
                     return onlyChildAs(call, CallExpression.class).flatMap(FlinkFilters::convert).map(Expressions::not);
 
                 case AND:
-                    status = FilterStatus.STATUS_ADD;
                     return convertLogicExpression(Expressions::and, call, partitionKeys, primaryKeys);
 
                 case OR:
@@ -253,32 +252,32 @@ public class TarimFlinkFilters {
         for (String partitionKey: partitionKeys){
             if (partitionKey.equals(name)){
                 partitionFilter = true;
-                if (status == FilterStatus.STATUS_ADD && op == Expression.Operation.EQ){
-                    partitionValues.add(lit.get().toString());
+                if (status == FilterStatus.STATUS_INIT && op == Expression.Operation.EQ){
+                    partitionValues.add(lit.get());
                     partitionEqFilter = true;
                 }else{
                     otherFilter = true;
                 }
             }else{
-                for (String primaryKey: primaryKeys){
-                    if (primaryKey.equals(name)){
+                int i = 0;
+                for (;i< primaryKeys.size(); i++){
+                    if (primaryKeys.get(i).equals(name)){
                         if (op == Expression.Operation.EQ && !otherFilter){
                             primaryKeyFilter = true;
-                            flinkSqlPrimaryKeys.add(new FlinkSqlPrimaryKey(name, lit.get().toString()));
-                        }else{
-                            otherFilter = true;
+                            flinkSqlPrimaryKeys.add(new FlinkSqlPrimaryKey(name, lit.get()));
+                            break;
                         }
                     }
-                    else{
-                        otherFilter = true;
-                    }
+                }
+                if (i == primaryKeys.size()){
+                    otherFilter = true;
                 }
             }
         }
 
     }
     private enum FilterStatus{
-        STATUS_ADD,
+        STATUS_INIT,
         STATUS_OR;
     }
 }

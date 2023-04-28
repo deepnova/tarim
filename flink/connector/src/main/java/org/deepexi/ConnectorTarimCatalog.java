@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 
 import org.apache.iceberg.types.Type;
@@ -158,14 +159,19 @@ public class ConnectorTarimCatalog implements Catalog {
                     builder.field(fieid.name(), TarimTypeToFlinkType.convertToDataType(fieid.schema().toString()).notNull());
                 }
 
-                String primaryKey = response.getPrimaryKey();
-                builder.primaryKey(primaryKey);
 
-                List<String> partitionKey = new ArrayList<>();
-                if (response.getParitionKeysCount() > 0) {
-                    //todo, support one key for test now
-                    partitionKey.add(response.getParitionKeys(0));
-                }
+                List<String> primaryKeylist = response.getPrimaryKeysList()
+                        .stream()
+                        .map(s -> s.toString())
+                        .collect(Collectors.toList());
+
+                List<String> partitionKey =  response.getPartitionKeysList()
+                        .stream()
+                        .map(s -> s.toString())
+                        .collect(Collectors.toList());
+
+                String[] primaryKeyArray = primaryKeylist.toArray(new String[primaryKeylist.size()]);
+                builder.primaryKey(primaryKeyArray);
 
                 TableSchema tableSchema = builder.build();
                 //the schema from this method, the index of the column is from 0, but the iceberg schema is from 1,
@@ -173,8 +179,6 @@ public class ConnectorTarimCatalog implements Catalog {
                 //Schema icebergSchema = AvroSchemaUtil.toIceberg(avroSchema);
                 List<Types.NestedField> nestedFields = AvroSchemaUtil.convert(avroSchema).asNestedType().asStructType().fields();
                 List<Types.NestedField> reorderFields = new ArrayList<>();
-                List<String> primaryKeys = new ArrayList<>();
-                primaryKeys.add(primaryKey);
                 List<Type.TypeID> pkTypes = new ArrayList<>();
                 List<Integer> pkIDs = new ArrayList<>();
 
@@ -183,19 +187,20 @@ public class ConnectorTarimCatalog implements Catalog {
                             field.isOptional(), field.name(), field.type(), field.doc());
                     Type type = field.type();
 
-                    if (primaryKey.equals(field.name())){
-                        Type.PrimitiveType priType = type.asPrimitiveType();
-                        pkTypes.add(priType.typeId());
-                        pkIDs.add(field.fieldId() + 1);
+                    for (String primaryKey : primaryKeylist){
+                        if (primaryKey.equals(field.name())){
+                            Type.PrimitiveType priType = type.asPrimitiveType();
+                            pkTypes.add(priType.typeId());
+                            pkIDs.add(field.fieldId() + 1);
+                        }
                     }
-
                     reorderFields.add(newField);
                 }
 
 
                 Schema icebergSchema = new org.apache.iceberg.Schema(reorderFields);
 
-                TarimPrimaryKey tarimPrimaryKey = new TarimPrimaryKey(primaryKeys, pkTypes, pkIDs, icebergSchema);
+                TarimPrimaryKey tarimPrimaryKey = new TarimPrimaryKey(primaryKeylist, pkTypes, pkIDs, icebergSchema);
 
                 //can not use jasonFormat, because the key is different between iceberg and grpc-protobuf-message
                 //TarimProto.PartitionSpecOrBuilder specMessage = response.getPartitionSpecOrBuilder();

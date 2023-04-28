@@ -2,10 +2,10 @@ package org.deepexi;
 
 import java.util.Objects;
 
-public class FlinkSqlPrimaryKey {
+public class FlinkSqlPrimaryKey<T> {
     private String primaryKey;
-    private String value;
-    public FlinkSqlPrimaryKey(String primaryKey, String value){
+    private T value;
+    public FlinkSqlPrimaryKey(String primaryKey, T value){
         this.primaryKey = primaryKey;
         this.value = value;
     }
@@ -14,7 +14,7 @@ public class FlinkSqlPrimaryKey {
         return this.primaryKey;
     }
 
-    public String getValue(){
+    public T getValue(){
         return this.value;
     }
 
@@ -28,10 +28,12 @@ public class FlinkSqlPrimaryKey {
         }
 
         FlinkSqlPrimaryKey key = (FlinkSqlPrimaryKey)o;
-        return key.primaryKey == this.primaryKey && key.value == key.value;
+        return key.primaryKey == this.primaryKey && key.value.equals(this.value);
+
+
     }
 
     public int hashCode(){
-        return Objects.hash(primaryKey + value);
+        return Objects.hash(primaryKey);
     }
 }

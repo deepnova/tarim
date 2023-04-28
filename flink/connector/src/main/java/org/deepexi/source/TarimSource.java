@@ -175,7 +175,7 @@ public class TarimSource {
             return this;
         }
 
-        public Builder partitionKey(Set<String> partitionKeys) {
+        public Builder partitionKey(Set<Object> partitionKeys) {
             contextBuilder.partitionKey(partitionKeys);
             return this;
         }
@@ -189,47 +189,55 @@ public class TarimSource {
             Preconditions.checkNotNull(env, "StreamExecutionEnvironment should not be null");
             boolean allPartitionFlag = false;
             boolean doLookup = false;
-
-            Iterator<String> iter = contextBuilder.partitionKeys.iterator();
             String primaryStr = "";
             String partitionStr = "";
-
-
             TarimPrimaryKey tarimPrimaryKey = ((ConnectorTarimTable)tarimTable).getPrimaryKey();
             List<String> primaryKey = tarimPrimaryKey.getPrimaryKeys();
 
-            List<String> primaryKeyValues = new ArrayList<>();
-
-            if (contextBuilder.getOtherFilter()){
+            List<Object> primaryKeyValues = new ArrayList<>();
+            Set<Object> partitionKeys = contextBuilder.getPartitionKeys();
+            if (partitionKeys == null){
                 allPartitionFlag = true;
-            }else if (contextBuilder.getPartitionKeyFilter()){
-                if (contextBuilder.getPartitionEqFilter() && contextBuilder.getPrimaryKeyFilter()){
-                    //support 1 partitionKey now
-                    if (contextBuilder.partitionKeys.size() == 1){
-                        partitionStr = iter.next();
+            }else{
+                Iterator<Object> iter = partitionKeys.iterator();
 
-                        for (String pk: primaryKey){
-                            FluentIterable<FlinkSqlPrimaryKey> filter =
-                                    FluentIterable.from(contextBuilder.primaryKeys).filter(new Predicate<FlinkSqlPrimaryKey>(){
-                                        @Override
-                                        public boolean apply(FlinkSqlPrimaryKey primaryKey) {
-                                            return primaryKey.getPrimaryKey().equals(pk);
-                                        }
-                                    });
+                if (contextBuilder.getOtherFilter()){
+                    allPartitionFlag = true;
+                }else if (contextBuilder.getPartitionKeyFilter()){
+                    if (contextBuilder.getPartitionEqFilter() && contextBuilder.getPrimaryKeyFilter()){
+                        //support 1 partitionKey now
+                        if (partitionKeys.size() == 1){
+                            //todo, use string now
+                            partitionStr = (String)iter.next();
 
-                            int i = 0;
-                            for (FlinkSqlPrimaryKey key: filter){
-                                primaryKeyValues.add(key.getValue());
-                                i++;
+                            for (String pk: primaryKey){
+                                FluentIterable<FlinkSqlPrimaryKey> filter =
+                                        FluentIterable.from(contextBuilder.getPrimaryKeys()).filter(new Predicate<FlinkSqlPrimaryKey>(){
+                                            @Override
+                                            public boolean apply(FlinkSqlPrimaryKey primaryKey) {
+                                                return primaryKey.getPrimaryKey().equals(pk);
+                                            }
+                                        });
+
+                                int i = 0;
+                                for (FlinkSqlPrimaryKey key: filter){
+                                    primaryKeyValues.add(key.getValue());
+                                    i++;
+                                }
+                                if (i != 1){
+                                    doLookup = false;
+                                    allPartitionFlag = true;
+                                    break;
+                                }
+                                doLookup = true;
                             }
-                            if (i != 1){
-                                break;
-                            }
+                        }else{
+                            allPartitionFlag = true;
                         }
-                        doLookup = true;
                     }
                 }
             }
+
 
             if (doLookup){
                 //todo

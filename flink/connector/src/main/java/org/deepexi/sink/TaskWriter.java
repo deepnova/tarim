@@ -14,6 +14,7 @@ import org.apache.flink.types.RowKind;
 import org.apache.iceberg.PartitionKey;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.StructLike;
 import org.apache.iceberg.flink.RowDataWrapper;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.deepexi.TarimDbClient;
@@ -48,6 +49,7 @@ public class TaskWriter implements TarimTaskWriter<RowData> {
     private TarimPrimaryKey tarimPrimaryKey;
 
     private TarimMetaClient metaClient;
+    private List<String> primaryKeyValuelist = new ArrayList<>();
 
     public TaskWriter(int tableId, TarimPrimaryKey tarimPrimaryKey, RowType flinkSchema, int parallelism, Schema icebergSchema, PartitionSpec partitionSpec, String schemaJson, TarimMetaClient metaClient){
         this.tableId = tableId;
@@ -156,13 +158,16 @@ public class TaskWriter implements TarimTaskWriter<RowData> {
 
             int size = bytesOS.size();
             System.out.println("size:" + size);
-
+            String pkString = tarimPrimaryKey.codecPrimaryValue(List.of(tarimPrimaryKey.primaryData(wrapper.wrap(row))));
+            primaryKeyValuelist.add(pkString);
             dataIndex++;
+
             if (dataIndex >= batchNum){
 
                 byte[] recordByte = bytesOS.toByteArray();
 
-                int result = client.insertRequest(tableId, partitionID, recordByte, tarimPrimaryKey.getPrimaryKeys().get(0));
+                //int result = client.insertRequest(tableId, partitionID, recordByte, tarimPrimaryKey.getPrimaryKeys().get(0));
+                int result = client.insertRequestWithPk(tableId, partitionID, recordByte, primaryKeyValuelist);
                 if (result != 0){
                     LOG.error("write, send the data fail! tableId={}, partitionID={}", tableId, partitionID);
                     throw new RuntimeException();
@@ -171,6 +176,7 @@ public class TaskWriter implements TarimTaskWriter<RowData> {
                 CheckPointData data = new CheckPointData(host, port, partitionID, recordByte);
                 dataList.add(serialize(data));
                 bytesOS.reset();
+                primaryKeyValuelist.clear();
                 dataIndex = 0;
             }
         }
@@ -178,7 +184,8 @@ public class TaskWriter implements TarimTaskWriter<RowData> {
             if (bytesOS.size() > 0){
 
                 byte[] recordByte = bytesOS.toByteArray();
-                int result = client.insertRequest(tableId, partitionID, recordByte, tarimPrimaryKey.getPrimaryKeys().get(0));
+                int result = client.insertRequestWithPk(tableId, partitionID, recordByte, primaryKeyValuelist);
+                //int result = client.insertRequest(tableId, partitionID, recordByte, tarimPrimaryKey.getPrimaryKeys().get(0));
                 if (result != 0){
                     LOG.error("Checkpoint send the data fail! tableId={}, partitionID={}", tableId, partitionID);
                     throw new RuntimeException();
@@ -187,11 +194,13 @@ public class TaskWriter implements TarimTaskWriter<RowData> {
                 dataList.add(serialize(data));
 
                 bytesOS.reset();
+                primaryKeyValuelist.clear();
                 dataIndex = 0;
             }
 
             if (dataList.size() > 0) {
                 completeList.addAll(dataList);
+                primaryKeyValuelist.clear();
                 dataList.clear();
             }
 

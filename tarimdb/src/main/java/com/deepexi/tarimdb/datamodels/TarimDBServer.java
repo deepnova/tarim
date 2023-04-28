@@ -1,6 +1,9 @@
 package com.deepexi.tarimdb.datamodels;
 
 import com.deepexi.tarimdb.util.TarimKVException;
+import com.google.common.base.Function;
+import com.google.common.collect.Lists;
+import com.google.protobuf.ByteString;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.BinaryDecoder;
@@ -16,10 +19,12 @@ import com.deepexi.rpc.TarimGrpc;
 import com.deepexi.rpc.TarimProto;
 import com.deepexi.rpc.TarimKVProto;
 
+import javax.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * TarimDB
@@ -34,12 +39,35 @@ public class TarimDBServer extends TarimGrpc.TarimImplBase {
         this.db = db;
     }
 
+    public void insertWithPk(TarimProto.InsertRequestWithPk request,
+                             StreamObserver<TarimProto.DbStatusResponse> responseObserver){
+        TarimProto.DbStatusResponse.Builder respBuilder = TarimProto.DbStatusResponse.newBuilder();
+        String partitionID = request.getPartitionID();
+        int tableID = request.getTableID();
+        byte[] record = request.getRecords().toByteArray();
+
+        List<String> primaryKeys = request.getPrimaryKeysList();
+
+
+        logger.info("TableID:{}, partitionID:{}" , tableID , partitionID);
+
+        int result = db.insertWithPkMsgProc(tableID, partitionID, primaryKeys, record);
+        if (result != 0){
+            respBuilder.setCode(1);
+            respBuilder.setMsg("insert data to rocksDb err!");
+        }else{
+            respBuilder.setCode(0);
+        }
+
+        responseObserver.onNext(respBuilder.build());
+        responseObserver.onCompleted();
+    }
     public void insert(TarimProto.InsertRequest request,
                        StreamObserver<TarimProto.DbStatusResponse> responseObserver)
     {
         TarimProto.DbStatusResponse.Builder respBuilder = TarimProto.DbStatusResponse.newBuilder();
 
-        String partitionID = request.getPartitoinID();
+        String partitionID = request.getPartitionID();
         int tableID = request.getTableID();
         byte[] record = request.getRecords().toByteArray();
 

@@ -51,14 +51,16 @@ public class KeyValueCodec
     public static String KeyEncode(KeyValueCodec kv) 
     {
         //todo get the Type and convert  the primaryKey
-        Long key = Long.parseLong(kv.value.getKey());
-
+        //Long key = Long.parseLong(kv.value.getKey());
+        String key = kv.value.getKey();
         String internalKey = String.format("%d%s%s"
                                           ,kv.chunkID
                                           ,KeyValueCodec.KEY_SEPARATOR
-                                          ,keyLongBase16Codec(key));
+                                          //,keyLongBase16Codec(key));
+                                          ,key);
         logger.debug("KeyEncode(), chunkID: " + kv.chunkID 
-                  + ", key: " + Arrays.toString(keyLongBase16Codec(key).getBytes())
+                  //+ ", key: " + Arrays.toString(keyLongBase16Codec(key).getBytes())
+                  + ", key: " + Arrays.toString(key.getBytes())
                   + ", internalKey: " + internalKey);
         return internalKey;
     }
@@ -78,14 +80,16 @@ public class KeyValueCodec
     public static String KeyPrefixEncode(long chunkID, String prefix) 
     {
         //todo get the Type and convert  the primaryKey
-        Long key = Long.parseLong(prefix);
+        //Integer key = Integer.parseInt(prefix);
 
         String internalKey = String.format("%d%s%s"
                                           ,chunkID
                                           ,KeyValueCodec.KEY_SEPARATOR
-                                          ,keyLongBase16Codec(key));
+                                          //,keyIntBase16Codec(key));
+                                          ,prefix);
         logger.debug("KeyPrefixEncode(), chunkID: " + chunkID 
-                  + ", prefix: " + Arrays.toString(keyLongBase16Codec(key).getBytes())
+                  //+ ", prefix: " + Arrays.toString(keyIntBase16Codec(key).getBytes())
+                  + ", prefix: " + prefix.getBytes()
                   + ", internalKey prefix: " + internalKey);
         return internalKey;
     }

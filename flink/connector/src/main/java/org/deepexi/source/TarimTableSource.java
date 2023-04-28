@@ -43,7 +43,7 @@ public class TarimTableSource implements ScanTableSource, SupportsProjectionPush
     private boolean partitionKeyFilter = false;
     private boolean primaryKeyFilter = false;
 
-    private Set<String> partitionKeys;
+    private Set<Object> partitionKeys;
     private Set<FlinkSqlPrimaryKey> primaryKeys;
 
     private TarimTableSource(TarimTableSource toCopy) {
@@ -93,7 +93,7 @@ public class TarimTableSource implements ScanTableSource, SupportsProjectionPush
         this.partitionEqFilter = partitionEqFilter;
     }
 
-    public void setPartitionKeys(Set<String> partitionKeys){
+    public void setPartitionKeys(Set<Object> partitionKeys){
         this.partitionKeys = partitionKeys;
     }
 

@@ -7,6 +7,8 @@ import com.google.protobuf.ByteString;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class TarimDbClient {
@@ -28,11 +30,24 @@ public class TarimDbClient {
     public int insertRequest(int tableID, String partitionData, byte[] record, String primaryKey){
         TarimProto.InsertRequest request = TarimProto.InsertRequest.newBuilder()
                 .setTableID(tableID)
-                .setPartitoinID(partitionData)
+                .setPartitionID(partitionData)
                 .setRecords(ByteString.copyFrom(record))
                 .setPrimaryKey(primaryKey)
                 .build();
         TarimProto.DbStatusResponse response = blockingStub.insert(request);
+        return response.getCode();
+    }
+
+    public int insertRequestWithPk(int tableID, String partitionData, byte[] record, List<String> primaryKeys){
+
+        TarimProto.InsertRequestWithPk request = TarimProto.InsertRequestWithPk.newBuilder()
+                .setTableID(tableID)
+                .setPartitionID(partitionData)
+                .setRecords(ByteString.copyFrom(record))
+                .addAllPrimaryKeys(primaryKeys)
+                .build();
+
+        TarimProto.DbStatusResponse response = blockingStub.insertWithPk(request);
         return response.getCode();
     }
 
