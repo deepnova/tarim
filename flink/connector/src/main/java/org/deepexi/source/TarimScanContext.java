@@ -5,11 +5,13 @@ import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.expressions.Expression;
+import org.deepexi.FlinkSqlPrimaryKey;
 
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.apache.iceberg.TableProperties.DEFAULT_NAME_MAPPING;
 
@@ -49,7 +51,7 @@ public class TarimScanContext implements Serializable {
     private static final ConfigOption<Boolean> INCLUDE_COLUMN_STATS =
             ConfigOptions.key("include-column-stats").booleanType().defaultValue(false);
     private static final ConfigOption<Boolean> DATAFILE_FROM_ICEBERG =
-            ConfigOptions.key("datafile-from-iceberg").booleanType().defaultValue(true);
+            ConfigOptions.key("datafile-from-iceberg").booleanType().defaultValue(false);
     private final boolean caseSensitive;
     private final Long snapshotId;
     private final Long startSnapshotId;
@@ -68,10 +70,14 @@ public class TarimScanContext implements Serializable {
     private final boolean includeColumnStats;
 
     private final boolean datafileFromIceberg;
+    private boolean partitionKeyFilter;
+    private boolean primaryKeyFilter;
+    private boolean otherFilter;
     private TarimScanContext(boolean caseSensitive, Long snapshotId, Long startSnapshotId, Long endSnapshotId,
                         Long asOfTimestamp, Long splitSize, Integer splitLookback, Long splitOpenFileCost,
                         boolean isStreaming, Duration monitorInterval, String nameMapping,
-                        Schema schema, List<Expression> filters, long limit, boolean includeColumnStats, boolean datafileFromIceberg) {
+                        Schema schema, List<Expression> filters, long limit, boolean includeColumnStats, boolean datafileFromIceberg,
+                        boolean partitionKeyFilter, boolean primaryKeyFilter, boolean otherFilter) {
         this.caseSensitive = caseSensitive;
         this.snapshotId = snapshotId;
         this.startSnapshotId = startSnapshotId;
@@ -89,8 +95,22 @@ public class TarimScanContext implements Serializable {
         this.limit = limit;
         this.includeColumnStats = includeColumnStats;
         this.datafileFromIceberg = datafileFromIceberg;
+        this.partitionKeyFilter = partitionKeyFilter;
+        this.primaryKeyFilter = primaryKeyFilter;
+        this.otherFilter = otherFilter;
     }
 
+    public boolean getPartitionKeyFilter(){
+        return this.partitionKeyFilter;
+    }
+
+    public boolean getPrimaryKeyFilter(){
+        return this.primaryKeyFilter;
+    }
+
+    public boolean getOtherFilter(){
+        return this.otherFilter;
+    }
     boolean caseSensitive() {
         return caseSensitive;
     }
@@ -216,7 +236,45 @@ public class TarimScanContext implements Serializable {
         private boolean includeColumnStats = INCLUDE_COLUMN_STATS.defaultValue();
 
         private boolean datafileFromIceberg = DATAFILE_FROM_ICEBERG.defaultValue();
+
+        private boolean partitionKeyFilter;
+        private boolean primaryKeyFilter;
+        private boolean otherFilter;
+
+        private boolean partitionEqFilter;
+
+        private Set<Object> partitionKeys;
+        private Set<FlinkSqlPrimaryKey> primaryKeys;
+
         private Builder() {
+        }
+        Builder partitionKeyFilter(boolean partitionKeyFilter) {
+            this.partitionKeyFilter = partitionKeyFilter;
+            return this;
+        }
+
+        Builder partitionEqFilter(boolean partitionEqFilter) {
+            this.partitionEqFilter = partitionEqFilter;
+            return this;
+        }
+
+        Builder primaryKeyFilter(boolean primaryKeyFilter) {
+            this.primaryKeyFilter = primaryKeyFilter;
+            return this;
+        }
+
+        Builder partitionKey(Set<Object> partitionKeys) {
+            this.partitionKeys = partitionKeys;
+            return this;
+        }
+
+        Builder primaryKey(Set<FlinkSqlPrimaryKey> primaryKeys) {
+            this.primaryKeys = primaryKeys;
+            return this;
+        }
+        Builder otherFilter(boolean otherFilter) {
+            this.otherFilter = otherFilter;
+            return this;
         }
 
         Builder caseSensitive(boolean newCaseSensitive) {
@@ -294,7 +352,7 @@ public class TarimScanContext implements Serializable {
             return this;
         }
 
-        Builder datafileFromIceberg(boolean datafileFromIceberg) {
+        Builder  datafileFromIceberg(boolean datafileFromIceberg) {
             this.datafileFromIceberg = datafileFromIceberg;
             return this;
         }
@@ -321,7 +379,35 @@ public class TarimScanContext implements Serializable {
             return new TarimScanContext(caseSensitive, snapshotId, startSnapshotId,
                     endSnapshotId, asOfTimestamp, splitSize, splitLookback,
                     splitOpenFileCost, isStreaming, monitorInterval, nameMapping, projectedSchema,
-                    filters, limit, includeColumnStats, datafileFromIceberg);
+                    filters, limit, includeColumnStats, datafileFromIceberg,
+                    partitionKeyFilter, primaryKeyFilter, otherFilter);
+        }
+
+        public List<Expression> getFilters(){
+            return this.filters;
+        }
+
+        public boolean getPartitionKeyFilter(){
+            return partitionKeyFilter;
+        }
+
+        public boolean getPrimaryKeyFilter(){
+            return primaryKeyFilter;
+        }
+
+        public boolean getOtherFilter(){
+            return otherFilter;
+        }
+        public boolean getPartitionEqFilter(){
+            return partitionEqFilter;
+        }
+
+        public Set<Object> getPartitionKeys(){
+            return this.partitionKeys;
+        }
+
+        public Set<FlinkSqlPrimaryKey> getPrimaryKeys(){
+            return this.primaryKeys;
         }
     }
 }

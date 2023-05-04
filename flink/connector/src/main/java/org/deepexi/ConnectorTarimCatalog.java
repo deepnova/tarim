@@ -5,6 +5,7 @@ import com.deepexi.rpc.TarimProto;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.table.api.TableSchema;
 
+import org.apache.flink.table.planner.expressions.In;
 import org.apache.iceberg.*;
 import org.apache.iceberg.avro.AvroSchemaUtil;
 import org.apache.iceberg.catalog.Catalog;
@@ -15,13 +16,17 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 
+import org.apache.iceberg.types.Type;
+import org.apache.iceberg.types.Types;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONObject;
 
 import static org.apache.flink.api.common.typeinfo.BasicTypeInfo.INT_TYPE_INFO;
 import static org.apache.flink.api.common.typeinfo.BasicTypeInfo.STRING_TYPE_INFO;
+import static org.apache.iceberg.orc.ORCSchemaUtil.fieldId;
 
 public class ConnectorTarimCatalog implements Catalog {
 
@@ -154,16 +159,48 @@ public class ConnectorTarimCatalog implements Catalog {
                     builder.field(fieid.name(), TarimTypeToFlinkType.convertToDataType(fieid.schema().toString()).notNull());
                 }
 
-                builder.primaryKey(response.getPrimaryKey());
 
-                List<String> partitionKey = new ArrayList<>();
-                if (response.getParitionKeysCount() > 0) {
-                    //todo, support one key for test now
-                    partitionKey.add(response.getParitionKeys(0));
-                }
+                List<String> primaryKeylist = response.getPrimaryKeysList()
+                        .stream()
+                        .map(s -> s.toString())
+                        .collect(Collectors.toList());
+
+                List<String> partitionKey =  response.getPartitionKeysList()
+                        .stream()
+                        .map(s -> s.toString())
+                        .collect(Collectors.toList());
+
+                String[] primaryKeyArray = primaryKeylist.toArray(new String[primaryKeylist.size()]);
+                builder.primaryKey(primaryKeyArray);
 
                 TableSchema tableSchema = builder.build();
-                Schema icebergSchema = AvroSchemaUtil.toIceberg(avroSchema);
+                //the schema from this method, the index of the column is from 0, but the iceberg schema is from 1,
+                //so the index should be + 1
+                //Schema icebergSchema = AvroSchemaUtil.toIceberg(avroSchema);
+                List<Types.NestedField> nestedFields = AvroSchemaUtil.convert(avroSchema).asNestedType().asStructType().fields();
+                List<Types.NestedField> reorderFields = new ArrayList<>();
+                List<Type.TypeID> pkTypes = new ArrayList<>();
+                List<Integer> pkIDs = new ArrayList<>();
+
+                for (Types.NestedField field : nestedFields){
+                    Types.NestedField newField = Types.NestedField.of(field.fieldId() + 1,
+                            field.isOptional(), field.name(), field.type(), field.doc());
+                    Type type = field.type();
+
+                    for (String primaryKey : primaryKeylist){
+                        if (primaryKey.equals(field.name())){
+                            Type.PrimitiveType priType = type.asPrimitiveType();
+                            pkTypes.add(priType.typeId());
+                            pkIDs.add(field.fieldId() + 1);
+                        }
+                    }
+                    reorderFields.add(newField);
+                }
+
+
+                Schema icebergSchema = new org.apache.iceberg.Schema(reorderFields);
+
+                TarimPrimaryKey tarimPrimaryKey = new TarimPrimaryKey(primaryKeylist, pkTypes, pkIDs, icebergSchema);
 
                 //can not use jasonFormat, because the key is different between iceberg and grpc-protobuf-message
                 //TarimProto.PartitionSpecOrBuilder specMessage = response.getPartitionSpecOrBuilder();
@@ -191,7 +228,7 @@ public class ConnectorTarimCatalog implements Catalog {
                 String jsonString = fieldSpec.toString();
                 PartitionSpec  partitionSpec = PartitionSpecParser.fromJson(icebergSchema, jsonString);
 
-                return new ConnectorTarimTable(tableIdentifier.name(), response.getTableID(), tableSchema, partitionKey, partitionSpec, icebergSchema, tarimTableSchema, response.getPrimaryKey());
+                return new ConnectorTarimTable(tableIdentifier.name(), response.getTableID(), tableSchema, partitionKey, partitionSpec, icebergSchema, tarimTableSchema, tarimPrimaryKey);
             }
         } catch (Exception e) {
             throw new RuntimeException(e);

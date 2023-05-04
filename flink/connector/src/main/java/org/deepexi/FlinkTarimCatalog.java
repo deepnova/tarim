@@ -273,7 +273,7 @@ public class FlinkTarimCatalog extends AbstractCatalog {
 
     @Override
     public CatalogFunction getFunction(ObjectPath functionPath) throws FunctionNotExistException, CatalogException {
-        return null;
+        throw new FunctionNotExistException(this.getName(), functionPath);
     }
 
     @Override

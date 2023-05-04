@@ -283,7 +283,7 @@ class TarimKVClientTest {
         try{
             /*--- scan ---*/
             boolean ifComplete = false;
-            List<TarimKVProto.KeyValueOp> results = kvClient.deltaChunkScan(param, ifComplete);
+            TarimKVProto.RangeData results = kvClient.deltaChunkScan(param, ifComplete);
             logger.info("results: " + results.toString());
 
             /*--- close ---*/

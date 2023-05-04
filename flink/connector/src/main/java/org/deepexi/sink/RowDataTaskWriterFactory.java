@@ -7,6 +7,7 @@ import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 import org.deepexi.SerializableTarimTable;
+import org.deepexi.TarimPrimaryKey;
 
 public class RowDataTaskWriterFactory implements TaskWriterFactory<RowData> {
 
@@ -18,7 +19,7 @@ public class RowDataTaskWriterFactory implements TaskWriterFactory<RowData> {
     private PartitionSpec partitionSpec;
 
     private String schemaJson;
-    private String primaryKey;
+    private TarimPrimaryKey primaryKey;
     private int tableId;
     private TarimMetaClient metaClient;
 

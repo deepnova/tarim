@@ -3,7 +3,6 @@ package com.deepexi.tarimdb;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
-import org.rocksdb.RocksDBException;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import org.apache.logging.log4j.LogManager;
@@ -11,14 +10,14 @@ import org.apache.logging.log4j.Logger;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
-import io.grpc.stub.StreamObserver;
+
 import java.io.IOException;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 
 import com.deepexi.rpc.TarimMetaGrpc;
 import com.deepexi.rpc.TarimProto;
-import com.deepexi.tarimdb.datamodels.TarimDBMeta;
+import tarimmeta.TarimDBMeta;
 
 @SpringBootTest
 class TarimDBMetaTest {

@@ -1,24 +1,15 @@
 package com.deepexi.tarimdb.tarimkv;
 
-import java.util.List;
-
 import com.deepexi.TarimMetaClient;
-import com.google.protobuf.ByteString;
 import io.grpc.stub.StreamObserver;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.deepexi.rpc.TarimKVMetaGrpc;
-import com.deepexi.rpc.TarimKVProto.DataDistributionRequest;
-import com.deepexi.rpc.TarimKVProto.DataDistributionResponse;
-import com.deepexi.rpc.TarimKVProto.DistributionInfo;
 import com.deepexi.rpc.TarimKVProto.StatusResponse;
-import com.deepexi.tarimdb.util.BasicConfig;
-import com.deepexi.tarimdb.util.Status;
 
 import com.deepexi.rpc.TarimKVProto.*;
-import com.deepexi.rpc.TarimKVProto;
 import com.deepexi.rpc.TarimKVGrpc;
+import tarimmeta.KVMetadata;
 
 /**
  * TarimKVRemote
@@ -54,12 +45,12 @@ public class TarimKVRemote extends TarimKVGrpc.TarimKVImplBase {
 
     /**
      */
-    public void get(GetRequest request, StreamObserver<GetReponse> responseObserver) {
+    public void get(GetRequest request, StreamObserver<GetResponse> responseObserver) {
     }
 
     /**
      */
-    public void prefixSeek(PrefixSeekRequest request, StreamObserver<GetReponse> responseObserver) {
+    public void prefixSeek(PrefixSeekRequest request, StreamObserver<GetResponse> responseObserver) {
     }
 
     /**

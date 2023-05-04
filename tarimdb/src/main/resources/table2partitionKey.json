@@ -1,0 +1,11 @@
+{
+  "namespace":"org.apache.arrow.avro",
+  "type":"record",
+  "name":"TarimRecord",
+  "fields":[
+    {
+      "name":"class",
+      "type":"string"
+    }
+  ]
+}
